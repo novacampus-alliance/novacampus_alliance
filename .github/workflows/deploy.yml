@@ -1,0 +1,27 @@
+name: CD - Deploy to IONOS VPS
+
+on:
+  push:
+    branches:
+      - production
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Executing remote ssh commands to deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd $HOME/novacampus_alliance
+            
+            git pull origin production
+            docker compose up -d --build
+            docker image prune -f
