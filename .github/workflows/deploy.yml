@@ -3,7 +3,7 @@ name: CD - Deploy to IONOS VPS
 on:
   push:
     branches:
-      - production
+      - main
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,6 +22,6 @@ jobs:
           script: |
             cd $HOME/novacampus_alliance
             
-            git pull origin production
+            git pull origin main
             docker compose up -d --build
             docker image prune -f
