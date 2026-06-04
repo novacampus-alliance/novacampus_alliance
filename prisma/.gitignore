@@ -1,0 +1,2 @@
+# Ne pas versionner les migrations de dev locales
+migrations/dev/
