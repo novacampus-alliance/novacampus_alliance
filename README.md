@@ -100,3 +100,12 @@ novacampus_alliance/
 ## Données
 
 Le projet s'appuie sur une base de données réelle fournie par l'entreprise (`NOVACAMPUS_ALLIANCE_DATABASE.xlsx`). Ces données sont **confidentielles** et ne doivent pas être diffusées.
+
+--- 
+
+## Workflow
+1. **Analyse des besoins** — Compréhension approfondie du contexte et des besoins métier
+2. **Conception de l'architecture** — Définition de l'architecture SOA et des interactions entre services
+3. **Développement itératif** — Mise en place des services métiers, intégration de l'agent IA, développement des portails IHM
+4. **Tests & validation** — Tests unitaires, d'intégration et de performance
+5. **Documentation** — Rédaction de la documentation technique et des diagrammes d'architecture
