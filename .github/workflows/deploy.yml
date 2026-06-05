@@ -16,12 +16,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          script_stop: true 
+          script_stop: true
           script: |
             PROJECT_PATH="/home/${{ secrets.VPS_USER }}/novacampus_alliance"
             cd $PROJECT_PATH
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
-            docker compose up -d --build
-            docker image prune -f
+            bash deploy.sh
