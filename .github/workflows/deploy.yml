@@ -20,6 +20,9 @@ jobs:
           script: |
             PROJECT_PATH="/home/${{ secrets.VPS_USER }}/novacampus_alliance"
             cd $PROJECT_PATH
+            mkdir -p ~/.ssh
+            touch ~/.ssh/known_hosts
+            ssh-keygen -F github.com >/dev/null || ssh-keyscan -H github.com >> ~/.ssh/known_hosts
             git fetch origin main
             git reset --hard origin/main
             git clean -fd
