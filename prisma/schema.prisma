@@ -1,0 +1,301 @@
+// ─────────────────────────────────────────────────────────────
+// Novacampus Alliance — Prisma Schema
+// Base de données : PostgreSQL
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── CAMPUS ──────────────────────────────────────────────────
+
+model Campus {
+  campus_id          String    @id @default(cuid())
+  campus_name        String    @db.VarChar(180)
+  address            String?   @db.VarChar(255)
+  city               String?   @db.VarChar(100)
+  postal_code        String?   @db.VarChar(50)
+  region             String?   @db.VarChar(180)
+  campus_director    String?   @db.VarChar(180)
+  phone              String?   @db.VarChar(50)
+  email              String?   @db.VarChar(250)
+  capacity_students  Int?
+  opening_date       DateTime? @db.Date
+  status             String    @db.VarChar(50)
+
+  programs      Program[]
+  instructors   Instructor[]
+  rooms         Room[]
+  students      Student[]
+  kpi_snapshots KpiDashboard[]
+  users         User[]
+
+  @@map("campuses")
+}
+
+// ─── PROGRAMME ───────────────────────────────────────────────
+
+model Program {
+  program_id     String  @id @default(cuid())
+  campus_id      String  @db.VarChar(50)
+  program_name   String  @db.VarChar(180)
+  program_type   String? @db.VarChar(100)
+  duration_years Decimal @db.Decimal(18, 0)
+  annual_tuition Decimal? @db.Decimal(12, 2)
+  department     String? @db.VarChar(180)
+  coordinator    String? @db.VarChar(180)
+  max_students   Int?
+  status         String  @db.VarChar(100)
+
+  campus   Campus    @relation(fields: [campus_id], references: [campus_id])
+  students Student[]
+  courses  Course[]
+
+  @@map("programs")
+}
+
+// ─── ENSEIGNANT ──────────────────────────────────────────────
+
+model Instructor {
+  instructor_id  String    @id @default(cuid())
+  campus_id      String    @db.VarChar(50)
+  first_name     String    @db.VarChar(100)
+  last_name      String    @db.VarChar(100)
+  email          String?   @db.VarChar(180)
+  phone          String?   @db.VarChar(50)
+  department     String?   @db.VarChar(180)
+  specialization String?   @db.VarChar(180)
+  hire_date      DateTime? @db.Date
+  status         String?   @db.VarChar(50)
+
+  campus    Campus     @relation(fields: [campus_id], references: [campus_id])
+  courses   Course[]
+  schedules Schedule[]
+
+  @@map("instructors")
+}
+
+// ─── SALLE ───────────────────────────────────────────────────
+
+model Room {
+  room_id   String  @id @default(cuid())
+  campus_id String  @db.VarChar(50)
+  room_name String  @db.VarChar(180)
+  building  String? @db.VarChar(180)
+  floor     Int?
+  capacity  Int?
+  room_type String? @db.VarChar(50)
+  equipment String? @db.VarChar(255)
+  status    String  @db.VarChar(50)
+
+  campus    Campus     @relation(fields: [campus_id], references: [campus_id])
+  courses   Course[]
+  schedules Schedule[]
+
+  @@map("rooms")
+}
+
+// ─── ETUDIANT ────────────────────────────────────────────────
+
+model Student {
+  student_id        String    @id @default(cuid())
+  campus_id         String    @db.VarChar(50)
+  program_id        String    @db.VarChar(50)
+  first_name        String    @db.VarChar(100)
+  last_name         String    @db.VarChar(100)
+  email             String    @unique @db.VarChar(150)
+  status            String?   @db.VarChar(50)
+  birth_date        DateTime? @db.Date
+  enrollment_year   Int
+  payment_status    String    @db.VarChar(100)
+  address           String?   @db.VarChar(255)
+  city              String?   @db.VarChar(180)
+  postal_code       String?   @db.VarChar(180)
+  emergency_contact String?   @db.VarChar(180)
+  emergency_phone   String?   @db.VarChar(50)
+
+  campus      Campus       @relation(fields: [campus_id], references: [campus_id])
+  program     Program      @relation(fields: [program_id], references: [program_id])
+  payments    Payment[]
+  enrollments Enrollment[]
+  user        User?
+
+  @@map("students")
+}
+
+// ─── COURS ───────────────────────────────────────────────────
+
+model Course {
+  course_id     String  @id @default(cuid())
+  program_id    String  @db.VarChar(50)
+  instructor_id String  @db.VarChar(50)
+  room_id       String? @db.VarChar(50)
+  course_name   String  @db.VarChar(180)
+  course_code   String  @db.VarChar(50)
+  semester      Int
+  credits       Int
+  hours_total   Int?
+  status        String  @db.VarChar(100)
+
+  program     Program    @relation(fields: [program_id], references: [program_id])
+  instructor  Instructor @relation(fields: [instructor_id], references: [instructor_id])
+  room        Room?      @relation(fields: [room_id], references: [room_id])
+  schedules   Schedule[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+// ─── PLANNING (SCHEDULE) ─────────────────────────────────────
+
+model Schedule {
+  schedule_id   String    @id @default(cuid())
+  course_id     String    @db.VarChar(50)
+  instructor_id String    @db.VarChar(50)
+  room_id       String    @db.VarChar(50)
+  day_of_week   Int       // 1 = Lundi … 7 = Dimanche
+  start_time    DateTime  @db.Time()
+  end_time      DateTime  @db.Time()
+  semester      Int?
+  academic_year String?   @db.VarChar(50)
+  status        String?   @db.VarChar(50)
+  last_modified DateTime? @updatedAt
+
+  course     Course     @relation(fields: [course_id], references: [course_id])
+  instructor Instructor @relation(fields: [instructor_id], references: [instructor_id])
+  room       Room       @relation(fields: [room_id], references: [room_id])
+
+  @@map("schedules")
+}
+
+// ─── INSCRIPTION (ENROLLMENT) ────────────────────────────────
+
+model Enrollment {
+  enrollment_id   String    @id @default(cuid())
+  student_id      String    @db.VarChar(50)
+  course_id       String    @db.VarChar(50)
+  semester        Int?
+  academic_year   String    @db.VarChar(50)
+  status          String?   @db.VarChar(50)  // inscrit | valide | abandonne | echec
+  final_grade     Decimal?  @db.Decimal(4, 2)
+  attendance_rate Decimal?  @db.Decimal(4, 2)
+  enrollment_date DateTime  @db.Date
+
+  student Student @relation(fields: [student_id], references: [student_id])
+  course  Course  @relation(fields: [course_id], references: [course_id])
+
+  @@unique([student_id, course_id, academic_year])
+  @@map("enrollments")
+}
+
+// ─── PAIEMENT ────────────────────────────────────────────────
+
+model Payment {
+  payment_id     String    @id @default(cuid())
+  student_id     String    @db.VarChar(50)
+  invoice_date   DateTime  @db.Date
+  due_date       DateTime  @db.Date
+  amount         Decimal   @db.Decimal(10, 2)
+  status         String    @db.VarChar(50)  // en_attente | paye | en_retard | escalade_humain
+  payment_date   DateTime? @db.Date
+  payment_method String?   @db.VarChar(50)
+  academic_year  String    @db.VarChar(50)
+  semester       Int
+  notes          String?   @db.Text
+
+  student         Student          @relation(fields: [student_id], references: [student_id])
+  relance_history RelanceHistory[]
+
+  @@map("payments")
+}
+
+// ─── HISTORIQUE RELANCES (Agent IA) ──────────────────────────
+// Stocke l'historique des relances générées par l'agent IA
+// pour adapter le ton et le niveau des relances suivantes.
+
+model RelanceHistory {
+  id            String   @id @default(cuid())
+  payment_id    String   @db.VarChar(50)
+  sent_at       DateTime @default(now())
+  level         Int      // 1 = courtois | 2 = ferme | 3 = formel
+  channel       String   @db.VarChar(50) // email | sms | push
+  draft_content String   @db.Text
+  status        String   @db.VarChar(50) // en_attente | envoye | ignore
+  escalated     Boolean  @default(false)
+
+  payment Payment @relation(fields: [payment_id], references: [payment_id])
+
+  @@map("relance_history")
+}
+
+// ─── NOTIFICATION ────────────────────────────────────────────
+
+model Notification {
+  notification_id String   @id @default(cuid())
+  user_id         String   @db.VarChar(50)
+  type            String   @db.VarChar(50)  // edt | paiement | relance | alerte
+  message         String   @db.Text
+  sent_at         DateTime @default(now())
+  read            Boolean  @default(false)
+
+  user User @relation(fields: [user_id], references: [user_id])
+
+  @@map("notifications")
+}
+
+// ─── UTILISATEUR (AUTH) ──────────────────────────────────────
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+  DIRECTION
+}
+
+model User {
+  user_id       String    @id @default(cuid())
+  campus_id     String?   @db.VarChar(50)
+  student_id    String?   @unique @db.VarChar(50)
+  email         String    @unique @db.VarChar(180)
+  password_hash String    @db.VarChar(255)
+  role          Role
+  first_name    String    @db.VarChar(100)
+  last_name     String    @db.VarChar(100)
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+  last_login    DateTime?
+
+  campus        Campus?        @relation(fields: [campus_id], references: [campus_id])
+  student       Student?       @relation(fields: [student_id], references: [student_id])
+  notifications Notification[]
+
+  @@map("users")
+}
+
+// ─── KPI DASHBOARD ───────────────────────────────────────────
+// Table de reporting pré-agrégée, alimentée par un job planifié.
+// Ne jamais écrire dedans manuellement.
+
+model KpiDashboard {
+  id                          String   @id @default(cuid())
+  period                      String   @db.VarChar(50) // ex: "2025-S1"
+  campus_id                   String   @db.VarChar(50)
+  total_students              Int?
+  enrollment_rate_percent     Decimal? @db.Decimal(4, 2)
+  average_attendance_percent  Decimal? @db.Decimal(4, 2)
+  success_rate_percent        Decimal? @db.Decimal(4, 2)
+  revenue                     Decimal? @db.Decimal(12, 2)
+  payment_default_rate_percent Decimal? @db.Decimal(4, 2)
+  room_occupancy_percent      Decimal? @db.Decimal(5, 2)
+  computed_at                 DateTime @default(now())
+
+  campus Campus @relation(fields: [campus_id], references: [campus_id])
+
+  @@unique([campus_id, period])
+  @@map("kpi_dashboard")
+}
