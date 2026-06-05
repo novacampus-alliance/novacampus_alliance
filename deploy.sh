@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 git fetch origin main
 git reset --hard origin/main
 git clean -fd
