@@ -23,3 +23,5 @@ coverage/
 # misc
 .DS_Store
 Thumbs.db
+
+/generated/prisma
