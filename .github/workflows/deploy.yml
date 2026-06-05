@@ -9,9 +9,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository code
-        uses: actions/checkout@v4
-
       - name: Executing remote ssh commands to deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -19,9 +16,12 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          script_stop: true 
           script: |
-            cd $HOME/novacampus_alliance
-            
-            git pull origin main
+            PROJECT_PATH="/home/${{ secrets.VPS_USER }}/novacampus_alliance"
+            cd $PROJECT_PATH
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
             docker compose up -d --build
             docker image prune -f
