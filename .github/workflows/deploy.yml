@@ -20,4 +20,5 @@ jobs:
           script: |
             PROJECT_PATH="/home/${{ secrets.VPS_USER }}/novacampus_alliance"
             cd $PROJECT_PATH
+            export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock
             bash deploy.sh
