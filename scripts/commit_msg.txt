@@ -1,0 +1,13 @@
+feat: configurer Prisma ORM et le schema relationnel complet
+
+- Installation de Prisma v5 dans backend/
+- Schema.prisma complet : Campus, Program, Instructor, Room, Student,
+  Course, Schedule, Enrollment, Payment, RelanceHistory,
+  Notification, User (avec enum Role), KpiDashboard
+- RelanceHistory modelise l'historique des relances IA (niveau, ton, statut)
+- PrismaModule global injectable dans tous les modules NestJS
+- Scripts prisma:generate, prisma:migrate, prisma:studio dans package.json
+- .env et .env.example configures (DATABASE_URL, JWT, Redis, AI_SERVICE_URL)
+- Build NestJS verifie : OK
+
+Closes #5
