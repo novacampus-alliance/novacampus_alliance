@@ -54,6 +54,8 @@ L'application suit une architecture **SOA (Service-Oriented Architecture)** orga
 - **Couche services métiers** — Services académique, facturation, IA et notification
 - **Couche données** — Base relationnelle PostgreSQL + NoSQL (MongoDB, Redis)
 
+Diagrammes Mermaid détaillés : [docs/architecture-soa.md](docs/architecture-soa.md)
+
 ---
 
 ## Stack Technique
