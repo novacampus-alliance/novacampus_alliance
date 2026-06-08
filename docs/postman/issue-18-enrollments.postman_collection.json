@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Novacampus — Issue #18 Inscriptions",
-    "description": "Tests du module enrollments via le gateway (:3001).\n\nBranche : `18-module-inscriptions-enrolement-etudiant-aux-cours`\n\nMerge recommandé : #13 (étudiants) + #14 (cours).\n\nNotes :\n- student_email auto-généré\n- status : inscrit | valide | abandonne | echec",
+    "description": "Tests du module enrollments via le gateway (:3001).\n\nBranche : `18-module-inscriptions-enrolement-etudiant-aux-cours`\n\nMerge recommandé : #13 (étudiants) + #14 (cours).\n\nNotes :\n- programme filtré par campus_id (évite 422)\n- student_email et course_code auto-générés\n- exécuter les dossiers dans l'ordre (0 → 1 → 2)\n- status : inscrit | valide | abandonne | echec",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -22,29 +22,105 @@
       "name": "0 — Auth",
       "item": [{
         "name": "Login (admin)",
-        "event": [{ "listen": "test", "script": { "exec": ["if (pm.response.code === 200 || pm.response.code === 201) pm.collectionVariables.set('token', pm.response.json().access_token);"], "type": "text/javascript" } }],
+        "event": [{ "listen": "test", "script": { "exec": [
+          "if (pm.response.code === 200 || pm.response.code === 201) {",
+          "  const json = pm.response.json();",
+          "  pm.collectionVariables.set('token', json.access_token);",
+          "  pm.test('Token reçu', () => pm.expect(json.access_token).to.be.a('string'));",
+          "}"
+        ], "type": "text/javascript" } }],
         "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}" }, "url": "{{base_url}}/api/auth/login" }
       }]
     },
     {
       "name": "1 — Prérequis",
       "item": [
-        { "name": "Liste campus", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('campus_id',l[0].campus_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/campus" } },
-        { "name": "Liste programmes", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('program_id',l[0].program_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/programs" } },
+        {
+          "name": "Liste campus",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "if (pm.response.code === 200) {",
+            "  const list = pm.response.json();",
+            "  if (list.length > 0) pm.collectionVariables.set('campus_id', list[0].campus_id);",
+            "}"
+          ], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/campus" }
+        },
+        {
+          "name": "Créer campus (si liste vide)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "if (pm.response.code === 200 || pm.response.code === 201) {",
+            "  pm.collectionVariables.set('campus_id', pm.response.json().campus_id);",
+            "}"
+          ], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_name\": \"Campus Inscription Test\",\n  \"adresse\": {\n    \"address\": \"10 rue de la Paix\",\n    \"city\": \"Lyon\",\n    \"postal_code\": \"69001\",\n    \"region\": \"Auvergne-Rhone-Alpes\"\n  },\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/campus" }
+        },
+        {
+          "name": "Liste programmes (campus)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "if (pm.response.code === 200) {",
+            "  const list = pm.response.json();",
+            "  const campusId = pm.collectionVariables.get('campus_id');",
+            "  const match = list.find(p => p.campus_id === campusId);",
+            "  if (match) pm.collectionVariables.set('program_id', match.program_id);",
+            "  else if (list.length > 0) pm.collectionVariables.set('program_id', list[0].program_id);",
+            "}"
+          ], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{base_url}}/api/programs?campus_id={{campus_id}}", "host": ["{{base_url}}"], "path": ["api", "programs"], "query": [{ "key": "campus_id", "value": "{{campus_id}}" }] } }
+        },
+        {
+          "name": "Créer programme (si aucun pour ce campus)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "if (pm.response.code === 200 || pm.response.code === 201) {",
+            "  pm.collectionVariables.set('program_id', pm.response.json().program_id);",
+            "}"
+          ], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"program_name\": \"Licence Informatique Inscription\",\n  \"program_type\": \"licence\",\n  \"duration_years\": 3,\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/programs" }
+        },
         {
           "name": "POST — Créer étudiant",
           "event": [
             { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('student_email','etu.'+Date.now()+'@novacampus.fr');"], "type": "text/javascript" } },
-            { "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('student_id',pm.response.json().student_id);"], "type": "text/javascript" } }
+            { "listen": "test", "script": { "exec": [
+              "pm.test('Etudiant cree', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('student_id', pm.response.json().student_id);",
+              "}"
+            ], "type": "text/javascript" } }
           ],
           "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"program_id\": \"{{program_id}}\",\n  \"first_name\": \"Lucas\",\n  \"last_name\": \"Bernard\",\n  \"email\": \"{{student_email}}\",\n  \"enrollment_year\": 2025,\n  \"payment_status\": \"a_jour\"\n}" }, "url": "{{base_url}}/api/students" }
         },
-        { "name": "Liste enseignants", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('instructor_id',l[0].instructor_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/instructors" } },
+        {
+          "name": "Liste enseignants",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "if (pm.response.code === 200) {",
+            "  const list = pm.response.json();",
+            "  if (list.length > 0) pm.collectionVariables.set('instructor_id', list[0].instructor_id);",
+            "}"
+          ], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/instructors" }
+        },
+        {
+          "name": "Créer enseignant (si liste vide)",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('instructor_email','ens.'+Date.now()+'@novacampus.fr');"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('instructor_id', pm.response.json().instructor_id);",
+              "}"
+            ], "type": "text/javascript" } }
+          ],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"first_name\": \"Marie\",\n  \"last_name\": \"Dupont\",\n  \"email\": \"{{instructor_email}}\",\n  \"specialty\": \"Reseaux\",\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/instructors" }
+        },
         {
           "name": "POST — Créer cours",
           "event": [
             { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('course_code','INS-'+Date.now());"], "type": "text/javascript" } },
-            { "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('course_id',pm.response.json().course_id);"], "type": "text/javascript" } }
+            { "listen": "test", "script": { "exec": [
+              "pm.test('Cours cree', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('course_id', pm.response.json().course_id);",
+              "}"
+            ], "type": "text/javascript" } }
           ],
           "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"program_id\": \"{{program_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"course_name\": \"Reseaux\",\n  \"course_code\": \"{{course_code}}\",\n  \"semester\": 1,\n  \"credits\": 5,\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/courses" }
         }
@@ -56,16 +132,40 @@
         { "name": "GET — Liste inscriptions", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/enrollments" } },
         {
           "name": "GET — Filtrée (étudiant)",
+          "event": [{ "listen": "prerequest", "script": { "exec": [
+            "const sid = pm.collectionVariables.get('student_id');",
+            "if (!sid) throw new Error('student_id vide — relancer le dossier 1 — Prérequis');"
+          ], "type": "text/javascript" } }],
           "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": { "raw": "{{base_url}}/api/enrollments?student_id={{student_id}}", "host": ["{{base_url}}"], "path": ["api", "enrollments"], "query": [{ "key": "student_id", "value": "{{student_id}}" }] } }
         },
         {
           "name": "POST — Inscrire étudiant au cours",
-          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('enrollment_id',pm.response.json().enrollment_id);"], "type": "text/javascript" } }],
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [
+              "if (!pm.collectionVariables.get('student_id')) throw new Error('student_id vide');",
+              "if (!pm.collectionVariables.get('course_id')) throw new Error('course_id vide');"
+            ], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('Inscription creee', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('enrollment_id', pm.response.json().enrollment_id);",
+              "}"
+            ], "type": "text/javascript" } }
+          ],
           "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"student_id\": \"{{student_id}}\",\n  \"course_id\": \"{{course_id}}\",\n  \"semester\": 1,\n  \"academic_year\": \"2025-2026\",\n  \"status\": \"inscrit\",\n  \"enrollment_date\": \"2025-09-01\"\n}" }, "url": "{{base_url}}/api/enrollments" }
         },
-        { "name": "GET — Détail inscription", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/enrollments/{{enrollment_id}}" } },
+        {
+          "name": "GET — Détail inscription",
+          "event": [{ "listen": "prerequest", "script": { "exec": [
+            "if (!pm.collectionVariables.get('enrollment_id')) throw new Error('enrollment_id vide — POST inscription a echoue');"
+          ], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/enrollments/{{enrollment_id}}" }
+        },
         {
           "name": "PUT — Mettre à jour inscription",
+          "event": [{ "listen": "prerequest", "script": { "exec": [
+            "if (!pm.collectionVariables.get('enrollment_id')) throw new Error('enrollment_id vide — POST inscription a echoue');"
+          ], "type": "text/javascript" } }],
           "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"valide\"\n}" }, "url": "{{base_url}}/api/enrollments/{{enrollment_id}}" }
         }
       ]
