@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Novacampus — Issue #19 Notes & Absences",
-    "description": "Tests notes et absences via le gateway (:3001).\n\nBranche : `19-module-notes-et-absences-saisie-et-consultation`\n\nMerge recommandé : #18 (inscriptions) — inclut étudiants + cours.\n\nEndpoints :\n- GET /api/students/:id/notes\n- GET /api/students/:id/absences\n- PUT /api/enrollments/:id/note\n- PUT /api/enrollments/:id/presence",
+    "description": "Tests notes et absences via le gateway (:3001).\n\nBranche : `19-module-notes-et-absences-saisie-et-consultation`\n\nGuide complet : docs/issue-19-notes-absences.md\n\nMerge recommandé : #18 (inscriptions) — inclut étudiants + cours.\n\nEndpoints :\n- GET /api/students/:id/notes\n- GET /api/students/:id/absences\n- PUT /api/enrollments/:id/note\n- PUT /api/enrollments/:id/presence",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
