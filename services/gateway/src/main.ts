@@ -22,7 +22,7 @@ async function bootstrap() {
 
     expressApp.use(
       route.path,
-      createProxyMiddleware(buildProxyOptions(target)),
+      createProxyMiddleware(buildProxyOptions(target, route.path)),
     );
 
     logger.log(`${route.path} → ${target} (${route.label})`);
@@ -30,12 +30,10 @@ async function bootstrap() {
 
   // Route racine /api vers le service académique (health check métier)
   const academicUrl =
-    process.env.ACADEMIC_SERVICE_URL ?? 'http://localhost:3002';
+    process.env.ACADEMIC_SERVICE_URL ?? 'http://localhost:3001';
   expressApp.use(
     '/api',
-    createProxyMiddleware(
-      buildProxyOptions(academicUrl),
-    ),
+    createProxyMiddleware(buildProxyOptions(academicUrl, '/api')),
   );
 
   app.enableCors({
@@ -43,7 +41,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT ?? 3001;
+  const port = process.env.PORT ?? 3000;
   await app.listen(port);
   logger.log(`API Gateway SOA démarré sur le port ${port}`);
 }

@@ -1,0 +1,22 @@
+feat: authentification JWT avec gestion des roles
+
+Backend NestJS:
+- Module Auth : login, logout, GET /api/auth/me
+- JWT via @nestjs/jwt + passport-jwt
+- Guards JwtAuthGuard et RolesGuard
+- Hash bcrypt, validation class-validator
+- CORS + prefix /api
+- Commentaires pedagogiques sur tous les fichiers auth
+
+Frontend Next.js:
+- Middleware de protection par role (jose)
+- API routes login/logout avec cookie httpOnly
+- Page /login et portails par role
+- Redirection automatique selon le role
+
+Database:
+- Migration initiale Prisma
+- Seed 4 utilisateurs de test (1 par role)
+- Fix chemin seed (backend/prisma/seed.ts)
+
+Closes #9

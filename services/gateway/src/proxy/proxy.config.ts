@@ -19,37 +19,37 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
   {
     path: '/api/auth',
     envKey: 'ACADEMIC_SERVICE_URL',
-    defaultUrl: 'http://localhost:3002',
-    label: 'Svc AcadÃ©mique â€” authentification',
+    defaultUrl: 'http://localhost:3001',
+    label: 'Svc Académique — authentification',
   },
   {
     path: '/api/campus',
     envKey: 'ACADEMIC_SERVICE_URL',
-    defaultUrl: 'http://localhost:3002',
-    label: 'Svc AcadÃ©mique â€” campus',
+    defaultUrl: 'http://localhost:3001',
+    label: 'Svc Académique — campus',
   },
   {
     path: '/api/programs',
     envKey: 'ACADEMIC_SERVICE_URL',
-    defaultUrl: 'http://localhost:3002',
-    label: 'Svc AcadÃ©mique â€” programmes',
+    defaultUrl: 'http://localhost:3001',
+    label: 'Svc Académique — programmes',
   },
   {
     path: '/api/instructors',
     envKey: 'ACADEMIC_SERVICE_URL',
-    defaultUrl: 'http://localhost:3002',
+    defaultUrl: 'http://localhost:3001',
     label: 'Svc Académique — enseignants',
   },
   {
     path: '/api/payments',
     envKey: 'BILLING_SERVICE_URL',
-    defaultUrl: 'http://localhost:3003',
+    defaultUrl: 'http://localhost:3002',
     label: 'Svc Facturation',
   },
   {
     path: '/api/notifications',
     envKey: 'NOTIFICATION_SERVICE_URL',
-    defaultUrl: 'http://localhost:3004',
+    defaultUrl: 'http://localhost:3003',
     label: 'Svc Notification',
   },
   {
@@ -61,10 +61,12 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
 ];
 
 /** Options communes du reverse proxy HTTP */
-export function buildProxyOptions(target: string): Options {
+export function buildProxyOptions(target: string, mountPath?: string): Options {
   return {
     target,
     changeOrigin: true,
+    // Réinjecte le préfixe mount (/api/auth + /login → /api/auth/login)
+    pathRewrite: mountPath ? (path) => `${mountPath}${path}` : undefined,
     // Transmet les cookies et headers d'authentification au service cible
     cookieDomainRewrite: '',
     on: {
