@@ -69,9 +69,160 @@ services:
     networks:
       - novacampus_network
 
-# ─────────────────────────────────────────
-# Volumes persistants
-# ─────────────────────────────────────────
+  # ─────────────────────────────────────────
+  # API Gateway — routage SOA (point d'entrée unique)
+  # ─────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: novacampus_gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-3001}:3001"
+    environment:
+      PORT: 3001
+      ACADEMIC_SERVICE_URL: http://academic-service:3002
+      BILLING_SERVICE_URL: http://billing-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+      AI_SERVICE_URL: http://ai-service:8000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      NODE_ENV: production
+    depends_on:
+      - academic-service
+      - billing-service
+      - notification-service
+    networks:
+      - novacampus_network
+
+  # ─────────────────────────────────────────
+  # Svc Académique — auth, campus, cours (NestJS)
+  # ─────────────────────────────────────────
+  academic-service:
+    build:
+      context: .
+      dockerfile: services/academic-service/Dockerfile
+    container_name: novacampus_academic
+    restart: unless-stopped
+    expose:
+      - "3002"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      PORT: 3002
+      NODE_ENV: production
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - novacampus_network
+
+  # ─────────────────────────────────────────
+  # Svc Facturation — paiements, factures (NestJS)
+  # ─────────────────────────────────────────
+  billing-service:
+    build:
+      context: .
+      dockerfile: services/billing-service/Dockerfile
+    container_name: novacampus_billing
+    restart: unless-stopped
+    expose:
+      - "3003"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      PORT: 3003
+      NODE_ENV: production
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - novacampus_network
+
+  # ─────────────────────────────────────────
+  # Svc Notification — alertes, emails (NestJS)
+  # ─────────────────────────────────────────
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: novacampus_notification
+    restart: unless-stopped
+    expose:
+      - "3004"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      PORT: 3004
+      NODE_ENV: production
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - novacampus_network
+
+  # ─────────────────────────────────────────
+  # Frontend — Next.js (portails IHM)
+  # ─────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    container_name: novacampus_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NODE_ENV: production
+    depends_on:
+      - gateway
+    networks:
+      - novacampus_network
+
+  # ─────────────────────────────────────────
+  # Svc IA — FastAPI (agent de relance)
+  # ─────────────────────────────────────────
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: novacampus_ai_service
+    restart: unless-stopped
+    ports:
+      - "${AI_SERVICE_PORT:-8000}:8000"
+    environment:
+      DEBUG: ${AI_DEBUG:-false}
+      PORT: 8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      MONGODB_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017
+      MONGODB_DB: ${AI_MONGODB_DB:-novacampus_ai}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      BACKEND_URL: http://gateway:3001
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:3001"]'
+      ESCALADE_SEUIL_JOURS: ${ESCALADE_SEUIL_JOURS:-30}
+      ESCALADE_SEUIL_RELANCES: ${ESCALADE_SEUIL_RELANCES:-3}
+    depends_on:
+      gateway:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - novacampus_network
+
 volumes:
   postgres_data:
     driver: local
@@ -80,9 +231,6 @@ volumes:
   redis_data:
     driver: local
 
-# ─────────────────────────────────────────
-# Réseau interne
-# ─────────────────────────────────────────
 networks:
   novacampus_network:
     driver: bridge

@@ -54,7 +54,8 @@ L'application suit une architecture **SOA (Service-Oriented Architecture)** orga
 - **Couche services métiers** — Services académique, facturation, IA et notification
 - **Couche données** — Base relationnelle PostgreSQL + NoSQL (MongoDB, Redis)
 
-Diagrammes Mermaid détaillés : [docs/architecture-soa.md](docs/architecture-soa.md)
+- Diagrammes SOA : [docs/architecture-soa.md](docs/architecture-soa.md)
+- Structure des fichiers : [docs/project-structure.md](docs/project-structure.md)
 
 ---
 
@@ -68,8 +69,10 @@ Diagrammes Mermaid détaillés : [docs/architecture-soa.md](docs/architecture-so
 - **Next.js Middleware** — authentification JWT et routage des requêtes
 
 ### Backend (SOA)
-- **Runtime** : Node.js + NestJS (TypeScript)
-- **Architecture** : Modulaire, orientée services
+- **API Gateway** : `services/gateway/` — point d'entrée unique (port 3001)
+- **Svc Académique** : `services/academic-service/` — auth, campus
+- **Svc Facturation** : `services/billing-service/` — paiements
+- **Svc Notification** : `services/notification-service/` — alertes
 
 ### Service IA
 - **Framework** : Python + FastAPI + LangChain
@@ -89,12 +92,16 @@ Diagrammes Mermaid détaillés : [docs/architecture-soa.md](docs/architecture-so
 
 ```
 novacampus_alliance/
-├── frontend/          # Next.js — portails IHM
-├── backend/           # NestJS — services métiers (SOA)
-├── ai-service/        # Python / FastAPI — service IA
-├── prisma/            # Schéma et migrations PostgreSQL
-├── docker/            # Configuration Docker Compose
-└── docs/              # Documentation technique et diagrammes
+├── frontend/                    # Next.js — portails IHM
+├── services/
+│   ├── gateway/                 # API Gateway — point d'entrée (port 3001)
+│   ├── academic-service/        # Svc Académique — auth, campus
+│   ├── billing-service/         # Svc Facturation — paiements
+│   └── notification-service/    # Svc Notification — alertes
+├── ai-service/                  # Python / FastAPI — agent IA
+├── prisma/                      # Schéma et migrations PostgreSQL
+├── docker-compose.yml           # Orchestration SOA
+└── docs/                        # Documentation technique
 ```
 
 ---
