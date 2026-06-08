@@ -1,0 +1,185 @@
+{
+  "info": {
+    "name": "Novacampus — Issue #12 Enseignants",
+    "description": "Tests du module instructors via le gateway (:3001).\n\nPrérequis :\n- academic-service sur :3002\n- gateway sur :3001\n- postgres/redis démarrés\n\nNotes :\n- adresse campus : address, city, postal_code, region (pas country)\n- email enseignant genere automatiquement ({{instructor_email}})",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3001" },
+    { "key": "token", "value": "" },
+    { "key": "campus_id", "value": "" },
+    { "key": "instructor_id", "value": "" },
+    { "key": "instructor_email", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('token', json.access_token);",
+                  "  pm.test('Token reçu', () => pm.expect(json.access_token).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Prérequis (campus)",
+      "item": [
+        {
+          "name": "Liste campus",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const list = pm.response.json();",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('campus_id', list[0].campus_id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/campus"
+          }
+        },
+        {
+          "name": "Créer campus (si liste vide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('campus_id', pm.response.json().campus_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_name\": \"Campus Marseille Test\",\n  \"adresse\": {\n    \"address\": \"1 quai du Port\",\n    \"city\": \"Marseille\",\n    \"postal_code\": \"13001\",\n    \"region\": \"Provence-Alpes-Cote d Azur\"\n  },\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/campus"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Enseignants (#12)",
+      "item": [
+        {
+          "name": "GET — Liste enseignants",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/instructors"
+          }
+        },
+        {
+          "name": "GET — Liste filtrée (campus)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/instructors?campus_id={{campus_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instructors"],
+              "query": [{ "key": "campus_id", "value": "{{campus_id}}" }]
+            }
+          }
+        },
+        {
+          "name": "POST — Créer enseignant",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('instructor_email', 'jean.martin.' + Date.now() + '@novacampus.fr');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('instructor_id', pm.response.json().instructor_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"first_name\": \"Jean\",\n  \"last_name\": \"Martin\",\n  \"email\": \"{{instructor_email}}\",\n  \"phone\": \"0612345678\",\n  \"department\": \"Informatique\",\n  \"specialization\": \"Algorithmique\",\n  \"hire_date\": \"2020-09-01\",\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/instructors"
+          }
+        },
+        {
+          "name": "GET — Détail enseignant (cours + créneaux)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/instructors/{{instructor_id}}"
+          }
+        },
+        {
+          "name": "PUT — Mettre à jour enseignant",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department\": \"Mathematiques\",\n  \"specialization\": \"Statistiques\",\n  \"status\": \"conge\"\n}"
+            },
+            "url": "{{base_url}}/api/instructors/{{instructor_id}}"
+          }
+        }
+      ]
+    }
+  ]
+}
