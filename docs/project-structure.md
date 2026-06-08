@@ -114,7 +114,7 @@ novacampus_alliance/
 │   │       │   ├── campus.controller.ts
 │   │       │   ├── campus.service.ts
 │   │       │   └── dto/
-│   │       ├── programs/              # 🔲 À faire — filières et formations
+│   │       ├── programs/              # ✅ CRUD programmes académiques par campus
 │   │       ├── instructors/           # 🔲 À faire — enseignants
 │   │       ├── students/              # 🔲 À faire — étudiants
 │   │       ├── courses/               # 🔲 À faire — cours
@@ -205,6 +205,7 @@ novacampus_alliance/
 |---|---|
 | `GET/POST /api/auth/*` | academic-service |
 | `GET/POST/PUT /api/campus/*` | academic-service |
+| `GET/POST/PUT /api/programs/*` | academic-service |
 | `GET /api/payments` | billing-service |
 | `GET /api/notifications` | notification-service |
 | `GET/POST /api/v1/*` | ai-service |

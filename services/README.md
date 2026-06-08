@@ -18,7 +18,7 @@ Le **frontend** et les clients externes appellent uniquement le **gateway** (`NE
 
 | Préfixe HTTP | Service cible |
 |---|---|
-| `/api/auth`, `/api/campus`, `/api` | academic-service |
+| `/api/auth`, `/api/campus`, `/api/programs`, `/api` | academic-service |
 | `/api/payments` | billing-service |
 | `/api/notifications` | notification-service |
 | `/api/v1` | ai-service |
