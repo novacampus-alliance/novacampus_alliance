@@ -14,7 +14,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  // 1. Transmettre email + password au backend NestJS
+  // 1. Transmettre email + password au gateway → svc académique
   const backendRes = await fetch(`${API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
   const data = await backendRes.json();
 
-  // 2. Si le backend refuse (mauvais identifiants) → renvoyer l'erreur au frontend
+  // 2. Si l'API refuse (mauvais identifiants) → renvoyer l'erreur au frontend
   if (!backendRes.ok) {
     return NextResponse.json(data, { status: backendRes.status });
   }

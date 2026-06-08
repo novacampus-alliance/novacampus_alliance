@@ -22,11 +22,10 @@ flowchart TB
 
     subgraph SERVICES["🟢 Couche Services Métiers — NestJS (SOA)"]
         direction TB
-        subgraph NEST["backend/ — Node.js + NestJS"]
-            SA["Svc Académique<br/>Campus · Cours · EDT · Notes<br/>Inscriptions · Conflits salles"]
-            SF["Svc Facturation<br/>Factures · Paiements · Échéanciers<br/>Suivi encaissements"]
-            SN["Svc Notification<br/>Email · SMS · Push<br/>Alertes · Rappels"]
-        end
+        GW2["API Gateway<br/>services/gateway :3001"]
+        SA["Svc Académique<br/>academic-service :3002"]
+        SF["Svc Facturation<br/>billing-service :3003"]
+        SN["Svc Notification<br/>notification-service :3004"]
         subgraph AI["ai-service/ — Python + FastAPI + LangChain"]
             SIA["Svc IA — Agent de Relance Financière<br/>Détection retards · Relances LLM<br/>Échéanciers · Escalade humaine"]
         end
@@ -40,7 +39,8 @@ flowchart TB
     end
 
     PE & PEN & PA & PD --> GW
-    GW --> SA & SF & SN & SIA
+    GW --> GW2
+    GW2 --> SA & SF & SN & SIA
 
     SA --> PG
     SF --> PG & MG
@@ -60,15 +60,17 @@ sequenceDiagram
     actor U as Utilisateur
     participant F as Frontend (Next.js)
     participant G as API Gateway (Middleware)
-    participant B as Backend (NestJS)
+    participant G2 as Gateway (NestJS)
+    participant B as Svc Métier (NestJS)
     participant A as AI Service (FastAPI)
     participant P as PostgreSQL
     participant M as MongoDB
 
     U->>F: Action (ex: consulter factures)
     F->>G: Requête HTTP + JWT
-    G->>G: Vérification JWT & rôle
-    G->>B: Routage vers service métier
+    G->>G: Vérification JWT & rôle (middleware IHM)
+    G->>G2: Requête HTTP
+    G2->>B: Routage vers service métier
 
     alt Service Académique / Facturation
         B->>P: Lecture / écriture Prisma
@@ -132,18 +134,39 @@ flowchart LR
 
 ---
 
-## Mapping code ↔ architecture
+## Mapping code ↔ architecture (implémentation SOA)
 
-| Couche | Dossier | Technologie |
-|---|---|---|
-| Présentation | `frontend/` | Next.js 14, shadcn/ui, Tailwind |
-| Gateway | `frontend/middleware.ts` | JWT, routage, protection routes |
-| Svc Académique | `backend/src/` (modules) | NestJS, Prisma |
-| Svc Facturation | `backend/src/` (modules) | NestJS, Prisma, MongoDB |
-| Svc Notification | `backend/src/` (modules) | NestJS, MongoDB, Redis |
-| Svc IA | `ai-service/` | FastAPI, LangChain, OpenAI |
-| Données relationnelles | `prisma/` | PostgreSQL + Prisma ORM |
-| Infrastructure | `docker-compose.yml` | Docker Compose, VPS IONOS |
+| Couche | Dossier | Port | Technologie |
+|---|---|---|---|
+| Présentation | `frontend/` | 3000 | Next.js 14, middleware JWT IHM |
+| **API Gateway** | `services/gateway/` | **3001** | NestJS, http-proxy-middleware |
+| Svc Académique | `services/academic-service/` | 3002 | NestJS, Prisma, Redis (auth, campus) |
+| Svc Facturation | `services/billing-service/` | 3003 | NestJS, Prisma (payments) |
+| Svc Notification | `services/notification-service/` | 3004 | NestJS, Prisma (notifications) |
+| Svc IA | `ai-service/` | 8000 | FastAPI, LangChain, OpenAI |
+| Données relationnelles | `prisma/` | — | PostgreSQL + Prisma ORM |
+| Infrastructure | `docker-compose.yml` | — | Docker Compose, VPS IONOS |
+
+### Flux SOA actuel
+
+```mermaid
+flowchart LR
+    F[frontend :3000] --> G[gateway :3001]
+    G --> A[academic-service :3002]
+    G --> B[billing-service :3003]
+    G --> N[notification-service :3004]
+    G --> AI[ai-service :8000]
+    A --> PG[(PostgreSQL)]
+    B --> PG
+    N --> PG
+    A --> RD[(Redis)]
+    AI --> MG[(MongoDB)]
+```
+
+Le frontend appelle **uniquement le gateway** (`NEXT_PUBLIC_API_URL`).  
+Les services métiers ne sont pas exposés publiquement (réseau Docker interne).
+
+**Arborescence complète des fichiers :** [project-structure.md](./project-structure.md)
 
 ---
 

@@ -30,7 +30,7 @@ function isPublicPath(pathname: string): boolean {
 
 /**
  * Vérifie que le JWT est valide (signature + expiration).
- * Utilise la librairie "jose" avec le même JWT_SECRET que le backend.
+ * Utilise la librairie "jose" avec le même JWT_SECRET que le svc académique.
  */
 async function verifyToken(token: string): Promise<JwtPayload | null> {
   const secret = process.env.JWT_SECRET;
