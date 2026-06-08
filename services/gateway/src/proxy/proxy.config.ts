@@ -1,17 +1,9 @@
 import { Options } from 'http-proxy-middleware';
 
-/**
- * Configuration des routes du gateway vers les services métiers SOA.
- * Chaque entrée mappe un préfixe HTTP vers l'URL interne du service cible.
- */
 export interface ServiceRoute {
-  /** Préfixe de chemin (ex: /api/campus) */
   path: string;
-  /** Variable d'environnement contenant l'URL du service */
   envKey: string;
-  /** Valeur par défaut en développement local */
   defaultUrl: string;
-  /** Description pédagogique */
   label: string;
 }
 
@@ -33,6 +25,30 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
     label: 'Svc Académique — programmes',
+  },
+  {
+    path: '/api/instructors',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — enseignants',
+  },
+  {
+    path: '/api/students',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — étudiants',
+  },
+  {
+    path: '/api/courses',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — cours',
+  },
+  {
+    path: '/api/enrollments',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — inscriptions',
   },
   {
     path: '/api/payments',
@@ -65,11 +81,8 @@ export function buildProxyOptions(target: string, mountPath?: string): Options {
     cookieDomainRewrite: '',
     on: {
       proxyReq: (proxyReq, req) => {
-        // Conserve le header Authorization pour les services protégés
         const auth = req.headers.authorization;
-        if (auth) {
-          proxyReq.setHeader('Authorization', auth);
-        }
+        if (auth) proxyReq.setHeader('Authorization', auth);
       },
     },
   };

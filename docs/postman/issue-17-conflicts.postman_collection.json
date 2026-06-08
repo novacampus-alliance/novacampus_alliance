@@ -1,0 +1,88 @@
+{
+  "info": {
+    "name": "Novacampus — Issue #17 Conflits salles",
+    "description": "Tests détection conflits de salles via le gateway (:3001).\n\nBranche : `17-detection-automatique-des-conflits-de-salles`\n\nMerge recommandé : #16 (plannings complet).\n\nProcédure :\n1. Exécuter prérequis + créer 1er créneau (POST schedules)\n2. Créer 2e cours + POST 2e créneau même salle/créneau → conflit\n3. GET /api/schedules/conflicts doit lister le conflit",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3001" },
+    { "key": "token", "value": "" },
+    { "key": "campus_id", "value": "" },
+    { "key": "program_id", "value": "" },
+    { "key": "instructor_id", "value": "" },
+    { "key": "course_id", "value": "" },
+    { "key": "course_id_2", "value": "" },
+    { "key": "room_id", "value": "" },
+    { "key": "schedule_id", "value": "" },
+    { "key": "course_code", "value": "" },
+    { "key": "course_code_2", "value": "" },
+    { "key": "instructor_email", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [{
+        "name": "Login (admin)",
+        "event": [{ "listen": "test", "script": { "exec": ["if (pm.response.code === 200 || pm.response.code === 201) pm.collectionVariables.set('token', pm.response.json().access_token);"], "type": "text/javascript" } }],
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}" },
+          "url": "{{base_url}}/api/auth/login"
+        }
+      }]
+    },
+    {
+      "name": "1 — Prérequis (identique #16)",
+      "item": [
+        { "name": "Liste campus", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('campus_id',l[0].campus_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/campus" } },
+        { "name": "Liste programmes", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('program_id',l[0].program_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/programs" } },
+        { "name": "Liste enseignants", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('instructor_id',l[0].instructor_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/instructors" } },
+        {
+          "name": "POST — Créer cours 1",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('course_code','CF1-'+Date.now());"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('course_id',pm.response.json().course_id);"], "type": "text/javascript" } }
+          ],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"program_id\": \"{{program_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"course_name\": \"Cours A\",\n  \"course_code\": \"{{course_code}}\",\n  \"semester\": 1,\n  \"credits\": 3,\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/courses" }
+        },
+        {
+          "name": "POST — Créer cours 2",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('course_code_2','CF2-'+Date.now());"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('course_id_2',pm.response.json().course_id);"], "type": "text/javascript" } }
+          ],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"program_id\": \"{{program_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"course_name\": \"Cours B\",\n  \"course_code\": \"{{course_code_2}}\",\n  \"semester\": 1,\n  \"credits\": 3,\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/courses" }
+        },
+        {
+          "name": "POST — Créer salle",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('room_id',pm.response.json().room_id);"], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"room_name\": \"Salle Conflit Test\",\n  \"capacity\": 30,\n  \"status\": \"disponible\"\n}" }, "url": "{{base_url}}/api/rooms" }
+        }
+      ]
+    },
+    {
+      "name": "2 — Conflits (#17)",
+      "item": [
+        {
+          "name": "POST — Créneau 1 (cours A)",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('schedule_id',pm.response.json().schedule_id);"], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"course_id\": \"{{course_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"room_id\": \"{{room_id}}\",\n  \"day_of_week\": 2,\n  \"start_time\": \"14:00\",\n  \"end_time\": \"16:00\",\n  \"academic_year\": \"2025-2026\",\n  \"status\": \"planifie\"\n}" }, "url": "{{base_url}}/api/schedules" }
+        },
+        {
+          "name": "POST — Créneau 2 (cours B, même salle/créneau)",
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"course_id\": \"{{course_id_2}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"room_id\": \"{{room_id}}\",\n  \"day_of_week\": 2,\n  \"start_time\": \"14:00\",\n  \"end_time\": \"16:00\",\n  \"academic_year\": \"2025-2026\",\n  \"status\": \"planifie\"\n}" }, "url": "{{base_url}}/api/schedules" }
+        },
+        {
+          "name": "GET — Détecter conflits",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Conflits detectes', () => pm.expect(pm.response.code).to.equal(200));"], "type": "text/javascript" } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/schedules/conflicts?campus_id={{campus_id}}", "host": ["{{base_url}}"], "path": ["api", "schedules", "conflicts"], "query": [{ "key": "campus_id", "value": "{{campus_id}}" }] }
+          }
+        }
+      ]
+    }
+  ]
+}
