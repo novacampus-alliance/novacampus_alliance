@@ -1,17 +1,17 @@
 import { Options } from 'http-proxy-middleware';
 
 /**
- * Configuration des routes du gateway vers les services métiers SOA.
- * Chaque entrée mappe un préfixe HTTP vers l'URL interne du service cible.
+ * Configuration des routes du gateway vers les services mÃ©tiers SOA.
+ * Chaque entrÃ©e mappe un prÃ©fixe HTTP vers l'URL interne du service cible.
  */
 export interface ServiceRoute {
-  /** Préfixe de chemin (ex: /api/campus) */
+  /** PrÃ©fixe de chemin (ex: /api/campus) */
   path: string;
   /** Variable d'environnement contenant l'URL du service */
   envKey: string;
-  /** Valeur par défaut en développement local */
+  /** Valeur par dÃ©faut en dÃ©veloppement local */
   defaultUrl: string;
-  /** Description pédagogique */
+  /** Description pÃ©dagogique */
   label: string;
 }
 
@@ -20,19 +20,25 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     path: '/api/auth',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
-    label: 'Svc Académique — authentification',
+    label: 'Svc AcadÃ©mique â€” authentification',
   },
   {
     path: '/api/campus',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
-    label: 'Svc Académique — campus',
+    label: 'Svc AcadÃ©mique â€” campus',
   },
   {
     path: '/api/programs',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
-    label: 'Svc Académique — programmes',
+    label: 'Svc AcadÃ©mique â€” programmes',
+  },
+  {
+    path: '/api/students',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — étudiants',
   },
   {
     path: '/api/payments',
@@ -50,7 +56,7 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     path: '/api/v1',
     envKey: 'AI_SERVICE_URL',
     defaultUrl: 'http://localhost:8000',
-    label: 'Svc IA — relance financière',
+    label: 'Svc IA â€” relance financiÃ¨re',
   },
 ];
 
@@ -63,7 +69,7 @@ export function buildProxyOptions(target: string): Options {
     cookieDomainRewrite: '',
     on: {
       proxyReq: (proxyReq, req) => {
-        // Conserve le header Authorization pour les services protégés
+        // Conserve le header Authorization pour les services protÃ©gÃ©s
         const auth = req.headers.authorization;
         if (auth) {
           proxyReq.setHeader('Authorization', auth);
