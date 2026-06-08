@@ -8,6 +8,8 @@ import { ProgramsModule } from './programs/programs.module';
 import { InstructorsModule } from './instructors/instructors.module';
 import { StudentsModule } from './students/students.module';
 import { CoursesModule } from './courses/courses.module';
+import { RoomsModule } from './rooms/rooms.module';
+import { SchedulesModule } from './schedules/schedules.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -23,6 +25,8 @@ import { RedisModule } from './redis/redis.module';
     InstructorsModule,
     StudentsModule,
     CoursesModule,
+    RoomsModule,
+    SchedulesModule,
     EnrollmentsModule,
   ],
   controllers: [AppController],
