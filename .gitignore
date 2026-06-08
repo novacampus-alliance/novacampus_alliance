@@ -91,3 +91,6 @@ coverage/
 *.csv
 uploads/
 data/raw/
+
+# POSTMAN
+docs/postman/
