@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -136,6 +137,7 @@ export class StudentsService {
   async create(dto: CreateStudentDto) {
     await this.ensureCampusExists(dto.campus_id);
     await this.ensureProgramExists(dto.program_id, dto.campus_id);
+    await this.ensureEmailAvailable(dto.email);
 
     const student = await this.prisma.student.create({
       data: {
@@ -173,6 +175,7 @@ export class StudentsService {
         )?.campus_id;
       if (campusId) await this.ensureProgramExists(dto.program_id, campusId);
     }
+    if (dto.email) await this.ensureEmailAvailable(dto.email, id);
 
     const data: Prisma.StudentUpdateInput = {};
     if (dto.campus_id !== undefined)
@@ -231,6 +234,16 @@ export class StudentsService {
       throw new UnprocessableEntityException(
         `Programme introuvable pour ce campus : ${programId}`,
       );
+    }
+  }
+
+  private async ensureEmailAvailable(email: string, excludeStudentId?: string) {
+    const existing = await this.prisma.student.findUnique({
+      where: { email },
+      select: { student_id: true },
+    });
+    if (existing && existing.student_id !== excludeStudentId) {
+      throw new ConflictException(`Un etudiant avec l'email ${email} existe deja`);
     }
   }
 
