@@ -1,0 +1,73 @@
+{
+  "info": {
+    "name": "Novacampus — Issue #19 Notes & Absences",
+    "description": "Tests notes et absences via le gateway (:3001).\n\nBranche : `19-module-notes-et-absences-saisie-et-consultation`\n\nMerge recommandé : #18 (inscriptions) — inclut étudiants + cours.\n\nEndpoints :\n- GET /api/students/:id/notes\n- GET /api/students/:id/absences\n- PUT /api/enrollments/:id/note\n- PUT /api/enrollments/:id/presence",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3001" },
+    { "key": "token", "value": "" },
+    { "key": "campus_id", "value": "" },
+    { "key": "program_id", "value": "" },
+    { "key": "student_id", "value": "" },
+    { "key": "instructor_id", "value": "" },
+    { "key": "course_id", "value": "" },
+    { "key": "enrollment_id", "value": "" },
+    { "key": "student_email", "value": "" },
+    { "key": "course_code", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [{
+        "name": "Login (admin)",
+        "event": [{ "listen": "test", "script": { "exec": ["if (pm.response.code === 200 || pm.response.code === 201) pm.collectionVariables.set('token', pm.response.json().access_token);"], "type": "text/javascript" } }],
+        "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}" }, "url": "{{base_url}}/api/auth/login" }
+      }]
+    },
+    {
+      "name": "1 — Prérequis + inscription",
+      "item": [
+        { "name": "Liste campus", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('campus_id',l[0].campus_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/campus" } },
+        { "name": "Liste programmes", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('program_id',l[0].program_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/programs" } },
+        {
+          "name": "POST — Créer étudiant",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('student_email','notes.'+Date.now()+'@novacampus.fr');"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('student_id',pm.response.json().student_id);"], "type": "text/javascript" } }
+          ],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"program_id\": \"{{program_id}}\",\n  \"first_name\": \"Emma\",\n  \"last_name\": \"Petit\",\n  \"email\": \"{{student_email}}\",\n  \"enrollment_year\": 2025,\n  \"payment_status\": \"a_jour\"\n}" }, "url": "{{base_url}}/api/students" }
+        },
+        { "name": "Liste enseignants", "event": [{ "listen": "test", "script": { "exec": ["const l=pm.response.json(); if(pm.response.code===200&&l.length) pm.collectionVariables.set('instructor_id',l[0].instructor_id);"], "type": "text/javascript" } }], "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/instructors" } },
+        {
+          "name": "POST — Créer cours",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('course_code','NOT-'+Date.now());"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('course_id',pm.response.json().course_id);"], "type": "text/javascript" } }
+          ],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"program_id\": \"{{program_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"course_name\": \"Mathematiques\",\n  \"course_code\": \"{{course_code}}\",\n  \"semester\": 1,\n  \"credits\": 4,\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/courses" }
+        },
+        {
+          "name": "POST — Inscrire étudiant",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===200||pm.response.code===201) pm.collectionVariables.set('enrollment_id',pm.response.json().enrollment_id);"], "type": "text/javascript" } }],
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"student_id\": \"{{student_id}}\",\n  \"course_id\": \"{{course_id}}\",\n  \"semester\": 1,\n  \"academic_year\": \"2025-2026\",\n  \"status\": \"inscrit\",\n  \"enrollment_date\": \"2025-09-01\"\n}" }, "url": "{{base_url}}/api/enrollments" }
+        }
+      ]
+    },
+    {
+      "name": "2 — Notes & Absences (#19)",
+      "item": [
+        {
+          "name": "PUT — Saisir note",
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"final_grade\": 14.5\n}" }, "url": "{{base_url}}/api/enrollments/{{enrollment_id}}/note" }
+        },
+        {
+          "name": "PUT — Saisir présence",
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"attendance_rate\": 92.5\n}" }, "url": "{{base_url}}/api/enrollments/{{enrollment_id}}/presence" }
+        },
+        { "name": "GET — Notes étudiant", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/students/{{student_id}}/notes" } },
+        { "name": "GET — Absences étudiant", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "url": "{{base_url}}/api/students/{{student_id}}/absences" } }
+      ]
+    }
+  ]
+}
