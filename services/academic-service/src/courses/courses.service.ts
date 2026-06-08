@@ -86,13 +86,14 @@ export class CoursesService {
   async create(dto: CreateCourseDto) {
     await this.ensureProgramExists(dto.program_id);
     await this.ensureInstructorExists(dto.instructor_id);
-    if (dto.room_id) await this.ensureRoomExists(dto.room_id);
+    const roomId = dto.room_id?.trim() || undefined;
+    if (roomId) await this.ensureRoomExists(roomId);
 
     const course = await this.prisma.course.create({
       data: {
         program_id: dto.program_id,
         instructor_id: dto.instructor_id,
-        room_id: dto.room_id,
+        room_id: roomId,
         course_name: dto.course_name,
         course_code: dto.course_code,
         semester: dto.semester,
@@ -109,16 +110,18 @@ export class CoursesService {
     await this.ensureCourseExists(id);
     if (dto.program_id) await this.ensureProgramExists(dto.program_id);
     if (dto.instructor_id) await this.ensureInstructorExists(dto.instructor_id);
-    if (dto.room_id) await this.ensureRoomExists(dto.room_id);
+    const roomId =
+      dto.room_id !== undefined ? dto.room_id?.trim() || null : undefined;
+    if (roomId) await this.ensureRoomExists(roomId);
 
     const data: Prisma.CourseUpdateInput = {};
     if (dto.program_id !== undefined)
       data.program = { connect: { program_id: dto.program_id } };
     if (dto.instructor_id !== undefined)
       data.instructor = { connect: { instructor_id: dto.instructor_id } };
-    if (dto.room_id !== undefined)
-      data.room = dto.room_id
-        ? { connect: { room_id: dto.room_id } }
+    if (roomId !== undefined)
+      data.room = roomId
+        ? { connect: { room_id: roomId } }
         : { disconnect: true };
     if (dto.course_name !== undefined) data.course_name = dto.course_name;
     if (dto.course_code !== undefined) data.course_code = dto.course_code;
