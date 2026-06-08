@@ -7,6 +7,7 @@ import { CampusModule } from './campus/campus.module';
 import { ProgramsModule } from './programs/programs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { RoomsModule } from './rooms/rooms.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     CampusModule,
     ProgramsModule,
+    RoomsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
