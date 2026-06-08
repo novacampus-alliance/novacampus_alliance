@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CampusModule } from './campus/campus.module';
+import { CoursesModule } from './courses/courses.module';
 import { ProgramsModule } from './programs/programs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -16,6 +17,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     CampusModule,
     ProgramsModule,
+    CoursesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

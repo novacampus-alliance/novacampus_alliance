@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 
 /**
- * Endpoints propres au gateway (non proxifiés vers les services métiers).
+ * Endpoints propres au gateway (non proxifiÃ©s vers les services mÃ©tiers).
  */
 @Controller()
 export class AppController {
   /**
-   * GET /health — santé du gateway (utilisé par Docker / monitoring).
+   * GET /health â€” santÃ© du gateway (utilisÃ© par Docker / monitoring).
    */
   @Get('health')
   health() {
@@ -18,7 +18,7 @@ export class AppController {
   }
 
   /**
-   * GET / — documentation rapide des routes disponibles.
+   * GET / â€” documentation rapide des routes disponibles.
    */
   @Get()
   index() {
@@ -26,7 +26,7 @@ export class AppController {
       service: 'api-gateway',
       message: 'Point d entree unique SOA Novacampus Alliance',
       routes: {
-        academic: '/api/auth, /api/campus, /api/programs',
+        academic: '/api/auth, /api/campus, /api/programs, /api/courses',
         billing: '/api/payments',
         notification: '/api/notifications',
         ai: '/api/v1',
