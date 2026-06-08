@@ -55,14 +55,14 @@ export const RelanceSchema = SchemaFactory.createForClass(Relance);
 
 @Schema({ timestamps: true, collection: 'paiements' })
 export class Paiement {
-  @Prop({ required: true, type: Types.ObjectId, ref: 'Student', index: true })
-  studentId: Types.ObjectId;
+  @Prop({ required: true, type: String, index: true })
+  studentId: string;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: 'Programme', index: true })
-  programmeId: Types.ObjectId;
+  @Prop({ required: true, type: String, index: true })
+  programmeId: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Inscription' })
-  inscriptionId?: Types.ObjectId;
+  @Prop({ type: String })
+  inscriptionId?: string;
 
   @Prop({ required: true, min: 0 }) montantTotal: number;
   @Prop({ default: 0, min: 0 }) montantPaye: number;

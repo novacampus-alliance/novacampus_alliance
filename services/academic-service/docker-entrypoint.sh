@@ -2,7 +2,7 @@
 set -e
 
 echo "Svc Académique — application des migrations Prisma..."
-npx prisma migrate deploy --schema=../../prisma/schema.prisma
+npx prisma migrate deploy --schema=../prisma/schema.prisma
 
 echo "Démarrage du service académique..."
-exec node dist/src/main.js
+exec node dist/main.js

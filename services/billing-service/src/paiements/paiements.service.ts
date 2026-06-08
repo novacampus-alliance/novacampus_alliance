@@ -33,9 +33,9 @@ export class PaiementsService {
       }));
     }
     const paiement = new this.paiementModel({
-      studentId: new Types.ObjectId(dto.studentId),
-      programmeId: new Types.ObjectId(dto.programmeId),
-      inscriptionId: dto.inscriptionId ? new Types.ObjectId(dto.inscriptionId) : undefined,
+      studentId: dto.studentId,
+      programmeId: dto.programmeId,
+      inscriptionId: dto.inscriptionId ?? undefined,
       montantTotal: dto.montantTotal, montantPaye: 0, soldeRestant: dto.montantTotal,
       dateEmission: new Date(dto.dateEmission), dateEcheance: new Date(dto.dateEcheance),
       statut: StatutPaiement.EN_ATTENTE, numeroFacture,
@@ -52,8 +52,8 @@ export class PaiementsService {
   async findAll(filters: FilterPaiementDto) {
     const query: Record<string, any> = {};
     if (filters.statut) query.statut = filters.statut;
-    if (filters.studentId) query.studentId = new Types.ObjectId(filters.studentId);
-    if (filters.programmeId) query.programmeId = new Types.ObjectId(filters.programmeId);
+    if (filters.studentId) query.studentId = filters.studentId;
+    if (filters.programmeId) query.programmeId = filters.programmeId;
     if (filters.anneeAcademique) query.anneeAcademique = filters.anneeAcademique;
     if (filters.dateDebut || filters.dateFin) {
       query.dateEcheance = {};
@@ -116,7 +116,7 @@ export class PaiementsService {
   }
 
   async getHistoriquePaiementsEtudiant(studentId: string) {
-    const paiements = await this.paiementModel.find({ studentId: new Types.ObjectId(studentId) }).sort({ dateEmission: -1 }).lean();
+    const paiements = await this.paiementModel.find({ studentId }).sort({ dateEmission: -1 }).lean();
     const totalPaye = paiements.reduce((s, p) => s + (p.montantPaye ?? 0), 0);
     const totalDu = paiements.reduce((s, p) => s + p.montantTotal, 0);
     return {

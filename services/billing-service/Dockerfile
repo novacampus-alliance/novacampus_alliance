@@ -22,7 +22,10 @@ ENV NODE_ENV=production
 COPY --from=builder /app/billing-service/node_modules ./node_modules
 COPY --from=builder /app/billing-service/dist ./dist
 COPY --from=builder /app/prisma ../prisma/
+COPY services/billing-service/docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 EXPOSE 3003
 
-CMD ["node", "dist/src/main.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
