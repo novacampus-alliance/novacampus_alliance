@@ -20,8 +20,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private configService: ConfigService) {}
 
+  /**
+   * Construit l'URL Redis — priorité à REDIS_URL si elle contient un mot de passe,
+   * sinon assemble depuis REDIS_PASSWORD (requis par Docker Compose).
+   */
+  private resolveRedisUrl(): string | undefined {
+    const explicit = this.configService.get<string>('REDIS_URL');
+    const password = this.configService.get<string>('REDIS_PASSWORD');
+    const host = this.configService.get<string>('REDIS_HOST') ?? 'localhost';
+    const port = this.configService.get<string>('REDIS_PORT') ?? '6379';
+
+    if (explicit?.includes('@')) {
+      return explicit;
+    }
+
+    if (password) {
+      return `redis://:${password}@${host}:${port}`;
+    }
+
+    return explicit;
+  }
+
   async onModuleInit(): Promise<void> {
-    const url = this.configService.get<string>('REDIS_URL');
+    const url = this.resolveRedisUrl();
     if (!url) {
       this.logger.warn(
         'REDIS_URL non configure — la revocation JWT sera desactivee',
