@@ -9,9 +9,10 @@ out/
 build/
 dist/
 
-# ─── NestJS / Build ─────────────────────────────────────────
-backend/dist/
-backend/build/
+# ─── NestJS / Build (services SOA) ──────────────────────────
+services/*/dist/
+services/*/node_modules/
+backend/
 
 # ─── Python / FastAPI ───────────────────────────────────────
 __pycache__/
