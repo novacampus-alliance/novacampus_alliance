@@ -22,7 +22,7 @@ async function bootstrap() {
 
     expressApp.use(
       route.path,
-      createProxyMiddleware(buildProxyOptions(target)),
+      createProxyMiddleware(buildProxyOptions(target, route.path)),
     );
 
     logger.log(`${route.path} → ${target} (${route.label})`);
@@ -33,9 +33,7 @@ async function bootstrap() {
     process.env.ACADEMIC_SERVICE_URL ?? 'http://localhost:3002';
   expressApp.use(
     '/api',
-    createProxyMiddleware(
-      buildProxyOptions(academicUrl),
-    ),
+    createProxyMiddleware(buildProxyOptions(academicUrl, '/api')),
   );
 
   app.enableCors({
