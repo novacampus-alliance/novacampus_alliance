@@ -135,11 +135,14 @@ services:
       - "3003"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
       PORT: 3003
       NODE_ENV: production
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
     depends_on:
       postgres:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     networks:
       - novacampus_network
