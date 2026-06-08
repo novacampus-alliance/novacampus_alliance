@@ -109,7 +109,7 @@
               "}"
             ], "type": "text/javascript" } }
           ],
-          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"first_name\": \"Marie\",\n  \"last_name\": \"Dupont\",\n  \"email\": \"{{instructor_email}}\",\n  \"specialty\": \"Reseaux\",\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/instructors" }
+          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"first_name\": \"Marie\",\n  \"last_name\": \"Dupont\",\n  \"email\": \"{{instructor_email}}\",\n  \"department\": \"Informatique\",\n  \"specialization\": \"Reseaux\",\n  \"status\": \"actif\"\n}" }, "url": "{{base_url}}/api/instructors" }
         },
         {
           "name": "POST — Créer cours",
