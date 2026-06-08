@@ -30,7 +30,7 @@ async function bootstrap() {
 
   // Route racine /api vers le service académique (health check métier)
   const academicUrl =
-    process.env.ACADEMIC_SERVICE_URL ?? 'http://localhost:3001';
+    process.env.ACADEMIC_SERVICE_URL ?? 'http://localhost:3002';
   expressApp.use(
     '/api',
     createProxyMiddleware(buildProxyOptions(academicUrl, '/api')),
@@ -41,7 +41,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT ?? 3000;
+  const port = process.env.PORT ?? 3001;
   await app.listen(port);
   logger.log(`API Gateway SOA démarré sur le port ${port}`);
 }
