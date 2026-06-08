@@ -70,14 +70,11 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
   },
 ];
 
-/** Options communes du reverse proxy HTTP */
 export function buildProxyOptions(target: string, mountPath?: string): Options {
   return {
     target,
     changeOrigin: true,
-    // Réinjecte le préfixe mount (/api/auth + /login → /api/auth/login)
     pathRewrite: mountPath ? (path) => `${mountPath}${path}` : undefined,
-    // Transmet les cookies et headers d'authentification au service cible
     cookieDomainRewrite: '',
     on: {
       proxyReq: (proxyReq, req) => {
