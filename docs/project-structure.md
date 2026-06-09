@@ -11,21 +11,23 @@ Chaque service métier est un **projet indépendant** (NestJS ou FastAPI) avec s
 
 ```
 novacampus_alliance/
-├── frontend/                          # Couche présentation — Next.js 14 (port 3000)
+├── frontend/                          # Couche présentation — Next.js 14 (port 8080)
 ├── services/
-│   ├── gateway/                       # API Gateway NestJS (port 3001) — point d'entrée unique
-│   ├── academic-service/              # Svc Académique NestJS (port 3002)
-│   ├── billing-service/               # Svc Facturation NestJS (port 3003)
-│   └── notification-service/          # Svc Notification NestJS (port 3004)
+│   ├── gateway/                       # API Gateway NestJS (port 3000) — point d'entrée unique
+│   ├── academic-service/              # Svc Académique NestJS (port 3001)
+│   ├── billing-service/               # Svc Facturation NestJS (port 3002)
+│   └── notification-service/          # Svc Notification NestJS (port 3003)
 ├── ai-service/                        # Svc IA FastAPI (port 8000)
 ├── prisma/                            # Schéma PostgreSQL partagé (Prisma ORM)
 ├── docs/                              # Documentation technique
 ├── docker-compose.yml                 # Orchestration SOA (tous les services)
+├── nginx/                             # Reverse proxy Nginx (port 80 → gateway:3000)
+│   └── nginx.conf                     # Configuration Nginx
 ├── .env.example                       # Variables racine (Docker Compose)
 └── deploy.sh                          # Script déploiement VPS IONOS
 ```
 
-**Règle :** le frontend et les clients externes appellent **uniquement** le gateway (`NEXT_PUBLIC_API_URL=http://localhost:3001`). Les services métiers communiquent sur le réseau Docker interne.
+**Règle :** le frontend et les clients externes appellent **uniquement** le gateway (`NEXT_PUBLIC_API_URL=http://localhost:3000`). Les services métiers communiquent sur le réseau Docker interne.
 
 ---
 
@@ -114,7 +116,7 @@ novacampus_alliance/
 │   │       │   ├── campus.controller.ts
 │   │       │   ├── campus.service.ts
 │   │       │   └── dto/
-│   │       ├── programs/              # 🔲 À faire — filières et formations
+│   │       ├── programs/              # ✅ CRUD programmes académiques par campus
 │   │       ├── instructors/           # 🔲 À faire — enseignants
 │   │       ├── students/              # 🔲 À faire — étudiants
 │   │       ├── courses/               # 🔲 À faire — cours
@@ -205,6 +207,7 @@ novacampus_alliance/
 |---|---|
 | `GET/POST /api/auth/*` | academic-service |
 | `GET/POST/PUT /api/campus/*` | academic-service |
+| `GET/POST/PUT /api/programs/*` | academic-service |
 | `GET /api/payments` | billing-service |
 | `GET /api/notifications` | notification-service |
 | `GET/POST /api/v1/*` | ai-service |

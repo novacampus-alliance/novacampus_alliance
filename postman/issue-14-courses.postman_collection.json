@@ -1,0 +1,395 @@
+{
+  "info": {
+    "name": "Novacampus — Issue #14 Cours",
+    "description": "Tests du module courses via le gateway (:3001).\n\nPrérequis :\n- Branche `14-module-cours-crud-et-affectation-enseignant-programme`\n- academic-service sur :3002 (doit afficher CoursesController + InstructorsController)\n- gateway sur :3001 (doit afficher /api/courses et /api/instructors)\n- postgres/redis démarrés\n\nIMPORTANT : apres git checkout, redemarrer academic ET gateway.\nSi 404 sur /api/courses → gateway pas a jour (relancer npm run start:dev).\n\nNotes :\n- adresse campus : address, city, postal_code, region (pas country)\n- email enseignant genere automatiquement ({{instructor_email}})\n- course_code genere automatiquement ({{course_code}})\n- ne pas envoyer room_id vide (laisser le champ absent si pas de salle)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost" },
+    { "key": "token", "value": "" },
+    { "key": "campus_id", "value": "" },
+    { "key": "program_id", "value": "" },
+    { "key": "instructor_id", "value": "" },
+    { "key": "course_id", "value": "" },
+    { "key": "room_id", "value": "" },
+    { "key": "instructor_email", "value": "" },
+    { "key": "course_code", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('token', json.access_token);",
+                  "  pm.test('Token reçu', () => pm.expect(json.access_token).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Prérequis (campus, programme, enseignant)",
+      "item": [
+        {
+          "name": "Liste campus",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const list = pm.response.json();",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('campus_id', list[0].campus_id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/campus"
+          }
+        },
+        {
+          "name": "Créer campus (si liste vide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('campus_id', pm.response.json().campus_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_name\": \"Campus Toulouse Test\",\n  \"adresse\": {\n    \"address\": \"1 place du Capitole\",\n    \"city\": \"Toulouse\",\n    \"postal_code\": \"31000\",\n    \"region\": \"Occitanie\"\n  },\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/campus"
+          }
+        },
+        {
+          "name": "Liste programmes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const list = pm.response.json();",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('program_id', list[0].program_id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/programs"
+          }
+        },
+        {
+          "name": "Créer programme (si liste vide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('program_id', pm.response.json().program_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"program_name\": \"Licence Informatique Test\",\n  \"program_type\": \"licence\",\n  \"duration_years\": 3,\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/programs"
+          }
+        },
+        {
+          "name": "Liste enseignants (si module #12 dispo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const list = pm.response.json();",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('instructor_id', list[0].instructor_id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/instructors"
+          }
+        },
+        {
+          "name": "Créer enseignant (si module #12 dispo)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('instructor_email', 'jean.martin.' + Date.now() + '@novacampus.fr');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('instructor_id', pm.response.json().instructor_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"first_name\": \"Jean\",\n  \"last_name\": \"Martin\",\n  \"email\": \"{{instructor_email}}\",\n  \"department\": \"Informatique\",\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/instructors"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Cours (#14)",
+      "item": [
+        {
+          "name": "GET — Liste cours (smoke test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Route /api/courses disponible', () => {",
+                  "  pm.expect(pm.response.code).to.not.equal(404);",
+                  "});",
+                  "if (pm.response.code === 404) {",
+                  "  console.warn('404 → redemarrer gateway sur branche 14');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/courses"
+          }
+        },
+        {
+          "name": "GET — Liste filtrée (programme)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/courses?program_id={{program_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "courses"],
+              "query": [{ "key": "program_id", "value": "{{program_id}}" }]
+            }
+          }
+        },
+        {
+          "name": "GET — Liste filtrée (enseignant)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/courses?instructor_id={{instructor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "courses"],
+              "query": [{ "key": "instructor_id", "value": "{{instructor_id}}" }]
+            }
+          }
+        },
+        {
+          "name": "POST — Créer cours",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('course_code', 'ALGO-' + Date.now());",
+                  "const prog = pm.collectionVariables.get('program_id');",
+                  "const inst = pm.collectionVariables.get('instructor_id');",
+                  "if (!prog || !inst) {",
+                  "  console.warn('program_id ou instructor_id manquant — executer les prerequis');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('course_id', pm.response.json().course_id);",
+                  "  pm.test('Cours cree', () => pm.response.to.have.status(201));",
+                  "} else if (pm.response.code === 404) {",
+                  "  pm.test('Gateway/courses indisponible — redemarrer services', () => false);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"program_id\": \"{{program_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"course_name\": \"Algorithmique\",\n  \"course_code\": \"{{course_code}}\",\n  \"semester\": 1,\n  \"credits\": 6,\n  \"hours_total\": 45,\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/courses"
+          }
+        },
+        {
+          "name": "POST — Créer cours avec salle (optionnel)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('course_code', 'BDD-' + Date.now());"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('course_id', pm.response.json().course_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"program_id\": \"{{program_id}}\",\n  \"instructor_id\": \"{{instructor_id}}\",\n  \"course_name\": \"Base de donnees\",\n  \"course_code\": \"{{course_code}}\",\n  \"semester\": 2,\n  \"credits\": 5,\n  \"hours_total\": 40,\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/courses"
+          }
+        },
+        {
+          "name": "GET — Détail cours",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const id = pm.collectionVariables.get('course_id');",
+                  "if (!id) { console.warn('course_id vide — POST creer cours a echoue'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/courses/{{course_id}}"
+          }
+        },
+        {
+          "name": "PUT — Mettre à jour cours",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"course_name\": \"Algorithmique avancee\",\n  \"credits\": 8,\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/courses/{{course_id}}"
+          }
+        },
+        {
+          "name": "PUT — Réaffecter enseignant",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instructor_id\": \"{{instructor_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/courses/{{course_id}}"
+          }
+        }
+      ]
+    }
+  ]
+}

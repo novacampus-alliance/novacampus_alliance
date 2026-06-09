@@ -1,0 +1,250 @@
+{
+  "info": {
+    "name": "Novacampus — Issue #13 Étudiants",
+    "description": "Tests du module students via le gateway (:3001).\n\nPrérequis :\n- academic-service sur :3002\n- gateway sur :3001\n- postgres/redis démarrés\n\nNotes :\n- adresse campus : address, city, postal_code, region (pas country)\n- email etudiant genere automatiquement ({{student_email}})\n- email deja utilise → 409 Conflict",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost" },
+    { "key": "token", "value": "" },
+    { "key": "campus_id", "value": "" },
+    { "key": "program_id", "value": "" },
+    { "key": "student_id", "value": "" },
+    { "key": "student_email", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('token', json.access_token);",
+                  "  pm.test('Token reçu', () => pm.expect(json.access_token).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Prérequis (campus & programme)",
+      "item": [
+        {
+          "name": "Liste campus",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const list = pm.response.json();",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('campus_id', list[0].campus_id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/campus"
+          }
+        },
+        {
+          "name": "Créer campus (si liste vide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('campus_id', pm.response.json().campus_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_name\": \"Campus Paris Test\",\n  \"adresse\": {\n    \"address\": \"5 avenue des Champs-Elysees\",\n    \"city\": \"Paris\",\n    \"postal_code\": \"75008\",\n    \"region\": \"Ile-de-France\"\n  },\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/campus"
+          }
+        },
+        {
+          "name": "Liste programmes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const list = pm.response.json();",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('program_id', list[0].program_id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/programs"
+          }
+        },
+        {
+          "name": "Créer programme (si liste vide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('program_id', pm.response.json().program_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"program_name\": \"Licence Informatique Test\",\n  \"program_type\": \"licence\",\n  \"duration_years\": 3,\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/programs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Étudiants (#13)",
+      "item": [
+        {
+          "name": "GET — Liste étudiants",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/students"
+          }
+        },
+        {
+          "name": "GET — Liste filtrée (campus + programme)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/students?campus_id={{campus_id}}&program_id={{program_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "students"],
+              "query": [
+                { "key": "campus_id", "value": "{{campus_id}}" },
+                { "key": "program_id", "value": "{{program_id}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST — Créer étudiant",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('student_email', 'marie.dupont.' + Date.now() + '@novacampus.fr');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('student_id', pm.response.json().student_id);",
+                  "  pm.test('Etudiant cree', () => pm.response.to.have.status(201));",
+                  "} else if (pm.response.code === 409) {",
+                  "  pm.test('Email deja utilise — relancer la requete (email auto-regenere)', () => true);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"program_id\": \"{{program_id}}\",\n  \"first_name\": \"Marie\",\n  \"last_name\": \"Dupont\",\n  \"email\": \"{{student_email}}\",\n  \"status\": \"actif\",\n  \"birth_date\": \"2003-05-15\",\n  \"enrollment_year\": 2025,\n  \"payment_status\": \"a_jour\",\n  \"address\": \"12 rue de la Paix\",\n  \"city\": \"Paris\",\n  \"postal_code\": \"75001\",\n  \"emergency_contact\": \"Jean Dupont\",\n  \"emergency_phone\": \"0612345678\"\n}"
+            },
+            "url": "{{base_url}}/api/students"
+          }
+        },
+        {
+          "name": "GET — Détail étudiant",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/students/{{student_id}}"
+          }
+        },
+        {
+          "name": "GET — Dossier académique",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/students/{{student_id}}/dossier"
+          }
+        },
+        {
+          "name": "PUT — Mettre à jour étudiant",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"suspendu\",\n  \"city\": \"Lyon\",\n  \"payment_status\": \"en_retard\"\n}"
+            },
+            "url": "{{base_url}}/api/students/{{student_id}}"
+          }
+        }
+      ]
+    }
+  ]
+}

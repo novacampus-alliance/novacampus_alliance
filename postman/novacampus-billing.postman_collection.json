@@ -1,0 +1,155 @@
+{
+  "info": {
+    "name": "Novacampus — Billing Service",
+    "_postman_id": "novacampus-billing-v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost", "type": "string" },
+    { "key": "studentId", "value": "123e4567-e89b-12d3-a456-426614174000", "type": "string" },
+    { "key": "programmeId", "value": "123e4567-e89b-12d3-a456-426614174001", "type": "string" },
+    { "key": "paiementId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Paiements",
+      "item": [
+        {
+          "name": "POST — Créer un paiement simple",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/paiements", "host": ["{{baseUrl}}"], "path": ["api", "paiements"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"programmeId\": \"{{programmeId}}\",\n  \"montantTotal\": 5000,\n  \"dateEmission\": \"2026-06-08\",\n  \"dateEcheance\": \"2026-07-08\",\n  \"description\": \"Frais de scolarité Q2\",\n  \"anneeAcademique\": \"2025-2026\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res._id) pm.collectionVariables.set('paiementId', res._id);",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Numéro facture généré', () => pm.expect(res.numeroFacture).to.match(/^FAC-/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST — Créer un paiement avec échéancier",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/paiements", "host": ["{{baseUrl}}"], "path": ["api", "paiements"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"programmeId\": \"{{programmeId}}\",\n  \"montantTotal\": 6000,\n  \"dateEmission\": \"2026-06-08\",\n  \"dateEcheance\": \"2026-09-08\",\n  \"description\": \"Frais annuels — échéancier 3x\",\n  \"anneeAcademique\": \"2025-2026\",\n  \"estEcheancier\": true,\n  \"echeances\": [\n    { \"numero\": 1, \"montant\": 2000, \"dateEcheance\": \"2026-07-08\" },\n    { \"numero\": 2, \"montant\": 2000, \"dateEcheance\": \"2026-08-08\" },\n    { \"numero\": 3, \"montant\": 2000, \"dateEcheance\": \"2026-09-08\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "GET — Liste tous les paiements",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/paiements?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["api", "paiements"], "query": [
+              { "key": "page", "value": "1" },
+              { "key": "limit", "value": "20" },
+              { "key": "statut", "value": "", "disabled": true },
+              { "key": "anneeAcademique", "value": "", "disabled": true },
+              { "key": "studentId", "value": "", "disabled": true },
+              { "key": "programmeId", "value": "", "disabled": true },
+              { "key": "dateDebut", "value": "", "disabled": true },
+              { "key": "dateFin", "value": "", "disabled": true }
+            ]}
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Meta présente', () => pm.expect(pm.response.json().meta).to.have.property('total'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET — Paiements en retard",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/paiements/en-retard", "host": ["{{baseUrl}}"], "path": ["api", "paiements", "en-retard"] }
+          }
+        },
+        {
+          "name": "GET — Historique d'un étudiant",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/paiements/etudiant/{{studentId}}/historique", "host": ["{{baseUrl}}"], "path": ["api", "paiements", "etudiant", "{{studentId}}", "historique"] }
+          }
+        },
+        {
+          "name": "GET — Détail d'un paiement",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/paiements/{{paiementId}}", "host": ["{{baseUrl}}"], "path": ["api", "paiements", "{{paiementId}}"] }
+          }
+        },
+        {
+          "name": "PATCH — Mettre à jour un paiement",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/paiements/{{paiementId}}", "host": ["{{baseUrl}}"], "path": ["api", "paiements", "{{paiementId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateEcheance\": \"2026-08-08\",\n  \"description\": \"Frais de scolarité Q2 — reporté\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST — Confirmer un paiement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/paiements/{{paiementId}}/confirmer", "host": ["{{baseUrl}}"], "path": ["api", "paiements", "{{paiementId}}", "confirmer"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montant\": 5000,\n  \"methode\": \"virement\",\n  \"reference\": \"VIR-2026-001\",\n  \"datePaiement\": \"2026-06-08\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE — Supprimer un paiement",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/paiements/{{paiementId}}", "host": ["{{baseUrl}}"], "path": ["api", "paiements", "{{paiementId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET — Gateway health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "GET — Payments (Prisma)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/payments", "host": ["{{baseUrl}}"], "path": ["api", "payments"] }
+          }
+        }
+      ]
+    }
+  ]
+}

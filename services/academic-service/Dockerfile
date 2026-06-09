@@ -20,7 +20,6 @@ RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/academic-service/package.json /app/academic-service/package-lock.json ./
 COPY --from=builder /app/academic-service/node_modules ./node_modules
 COPY --from=builder /app/academic-service/dist ./dist
 COPY --from=builder /app/prisma ../prisma/
