@@ -8,6 +8,7 @@ import { InstructorsModule } from './instructors/instructors.module';
 import { ProgramsModule } from './programs/programs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { StudentsModule } from './students/students.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RedisModule } from './redis/redis.module';
     CampusModule,
     ProgramsModule,
     InstructorsModule,
+    StudentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
