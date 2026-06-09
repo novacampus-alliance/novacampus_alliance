@@ -1,0 +1,178 @@
+{
+  "info": {
+    "name": "Novacampus — Issue #15 Salles",
+    "description": "Tests du module rooms via le gateway (:3001).\n\nBranche : `15-module-salles-et-batiments-crud-et-disponibilite`\n\nNotes :\n- adresse campus : address, city, postal_code, region (pas country)\n- status salle : disponible | occupee | maintenance | archive",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3001" },
+    { "key": "token", "value": "" },
+    { "key": "campus_id", "value": "" },
+    { "key": "room_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200 || pm.response.code === 201) {",
+                "  pm.collectionVariables.set('token', pm.response.json().access_token);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}" },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Prérequis (campus)",
+      "item": [
+        {
+          "name": "Liste campus",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200 && pm.response.json().length > 0) {",
+                "  pm.collectionVariables.set('campus_id', pm.response.json()[0].campus_id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/campus"
+          }
+        },
+        {
+          "name": "Créer campus (si liste vide)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200 || pm.response.code === 201) {",
+                "  pm.collectionVariables.set('campus_id', pm.response.json().campus_id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_name\": \"Campus Nantes Test\",\n  \"adresse\": {\n    \"address\": \"1 place du Commerce\",\n    \"city\": \"Nantes\",\n    \"postal_code\": \"44000\",\n    \"region\": \"Pays de la Loire\"\n  },\n  \"status\": \"actif\"\n}"
+            },
+            "url": "{{base_url}}/api/campus"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Salles (#15)",
+      "item": [
+        {
+          "name": "GET — Liste salles",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/rooms"
+          }
+        },
+        {
+          "name": "GET — Liste filtrée (campus)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/rooms?campus_id={{campus_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rooms"],
+              "query": [{ "key": "campus_id", "value": "{{campus_id}}" }]
+            }
+          }
+        },
+        {
+          "name": "POST — Créer salle",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200 || pm.response.code === 201) {",
+                "  pm.collectionVariables.set('room_id', pm.response.json().room_id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"room_name\": \"Amphi A\",\n  \"building\": \"Batiment Sciences\",\n  \"floor\": 1,\n  \"capacity\": 120,\n  \"room_type\": \"amphitheatre\",\n  \"equipment\": \"videoprojecteur, tableau\",\n  \"status\": \"disponible\"\n}"
+            },
+            "url": "{{base_url}}/api/rooms"
+          }
+        },
+        {
+          "name": "GET — Salles disponibles (créneau)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/rooms/available?campus_id={{campus_id}}&day_of_week=1&start_time=08:00&end_time=10:00&academic_year=2025-2026",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rooms", "available"],
+              "query": [
+                { "key": "campus_id", "value": "{{campus_id}}" },
+                { "key": "day_of_week", "value": "1" },
+                { "key": "start_time", "value": "08:00" },
+                { "key": "end_time", "value": "10:00" },
+                { "key": "academic_year", "value": "2025-2026" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET — Détail salle",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/rooms/{{room_id}}"
+          }
+        },
+        {
+          "name": "PUT — Mettre à jour salle",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 150,\n  \"status\": \"disponible\"\n}"
+            },
+            "url": "{{base_url}}/api/rooms/{{room_id}}"
+          }
+        }
+      ]
+    }
+  ]
+}
