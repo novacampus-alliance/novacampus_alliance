@@ -36,6 +36,17 @@ export class StudentsController {
     return this.studentsService.findDossier(id);
   }
 
+  @Get(':id/notes')
+  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR, Role.STUDENT)
+  findNotes(@Param('id') id: string) {
+    return this.studentsService.findNotes(id);
+  }
+
+  @Get(':id/absences')
+  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR, Role.STUDENT)
+  findAbsences(@Param('id') id: string) {
+    return this.studentsService.findAbsences(id);
+  }
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)

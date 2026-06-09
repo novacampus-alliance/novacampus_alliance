@@ -132,7 +132,50 @@ export class StudentsService {
     };
   }
 
+  async findNotes(id: string) {
+    await this.ensureExists(id);
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { student_id: id, final_grade: { not: null } },
+      select: {
+        enrollment_id: true,
+        final_grade: true,
+        academic_year: true,
+        semester: true,
+        course: {
+          select: { course_id: true, course_name: true, course_code: true },
+        },
+      },
+      orderBy: { academic_year: 'desc' },
+    });
+    return enrollments;
+  }
 
+  async findAbsences(id: string) {
+    await this.ensureExists(id);
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        student_id: id,
+        attendance_rate: { not: null },
+      },
+      select: {
+        enrollment_id: true,
+        attendance_rate: true,
+        academic_year: true,
+        semester: true,
+        course: {
+          select: { course_id: true, course_name: true, course_code: true },
+        },
+      },
+      orderBy: { academic_year: 'desc' },
+    });
+    return enrollments.map((e) => ({
+      ...e,
+      absence_rate:
+        e.attendance_rate != null
+          ? Number((100 - Number(e.attendance_rate)).toFixed(2))
+          : null,
+    }));
+  }
 
   async create(dto: CreateStudentDto) {
     await this.ensureCampusExists(dto.campus_id);

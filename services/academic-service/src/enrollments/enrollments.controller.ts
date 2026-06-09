@@ -14,6 +14,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
+import { UpdateEnrollmentNoteDto } from './dto/update-enrollment-note.dto';
+import { UpdateEnrollmentPresenceDto } from './dto/update-enrollment-presence.dto';
 import { EnrollmentsService } from './enrollments.service';
 
 @Controller('enrollments')
@@ -49,4 +51,18 @@ export class EnrollmentsController {
     return this.enrollmentsService.update(id, dto);
   }
 
+  @Put(':id/note')
+  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
+  updateNote(@Param('id') id: string, @Body() dto: UpdateEnrollmentNoteDto) {
+    return this.enrollmentsService.updateNote(id, dto);
+  }
+
+  @Put(':id/presence')
+  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
+  updatePresence(
+    @Param('id') id: string,
+    @Body() dto: UpdateEnrollmentPresenceDto,
+  ) {
+    return this.enrollmentsService.updatePresence(id, dto);
+  }
 }

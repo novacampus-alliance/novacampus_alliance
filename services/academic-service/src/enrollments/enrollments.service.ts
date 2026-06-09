@@ -7,6 +7,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
+import { UpdateEnrollmentNoteDto } from './dto/update-enrollment-note.dto';
+import { UpdateEnrollmentPresenceDto } from './dto/update-enrollment-presence.dto';
 
 const enrollmentDetailInclude = {
   student: {
@@ -141,7 +143,25 @@ export class EnrollmentsService {
     return enrollment;
   }
 
+  async updateNote(id: string, dto: UpdateEnrollmentNoteDto) {
+    await this.ensureExists(id);
+    const enrollment = await this.prisma.enrollment.update({
+      where: { enrollment_id: id },
+      data: { final_grade: dto.final_grade },
+      include: enrollmentDetailInclude,
+    });
+    return enrollment;
+  }
 
+  async updatePresence(id: string, dto: UpdateEnrollmentPresenceDto) {
+    await this.ensureExists(id);
+    const enrollment = await this.prisma.enrollment.update({
+      where: { enrollment_id: id },
+      data: { attendance_rate: dto.attendance_rate },
+      include: enrollmentDetailInclude,
+    });
+    return enrollment;
+  }
 
   private async ensureExists(id: string) {
     const exists = await this.prisma.enrollment.findUnique({
