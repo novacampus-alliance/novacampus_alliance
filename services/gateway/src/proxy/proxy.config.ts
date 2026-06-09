@@ -1,17 +1,9 @@
 import { Options } from 'http-proxy-middleware';
 
-/**
- * Configuration des routes du gateway vers les services mÃ©tiers SOA.
- * Chaque entrÃ©e mappe un prÃ©fixe HTTP vers l'URL interne du service cible.
- */
 export interface ServiceRoute {
-  /** PrÃ©fixe de chemin (ex: /api/campus) */
   path: string;
-  /** Variable d'environnement contenant l'URL du service */
   envKey: string;
-  /** Valeur par dÃ©faut en dÃ©veloppement local */
   defaultUrl: string;
-  /** Description pÃ©dagogique */
   label: string;
 }
 
@@ -53,6 +45,12 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     label: 'Svc Académique — enseignants',
   },
   {
+    path: '/api/rooms',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — salles',
+  },
+  {
     path: '/api/payments',
     envKey: 'BILLING_SERVICE_URL',
     defaultUrl: 'http://localhost:3003',
@@ -72,22 +70,16 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
   },
 ];
 
-/** Options communes du reverse proxy HTTP */
 export function buildProxyOptions(target: string, mountPath?: string): Options {
   return {
     target,
     changeOrigin: true,
-    // Réinjecte le préfixe mount (/api/auth + /login → /api/auth/login)
     pathRewrite: mountPath ? (path) => `${mountPath}${path}` : undefined,
-    // Transmet les cookies et headers d'authentification au service cible
     cookieDomainRewrite: '',
     on: {
       proxyReq: (proxyReq, req) => {
-        // Conserve le header Authorization pour les services protÃ©gÃ©s
         const auth = req.headers.authorization;
-        if (auth) {
-          proxyReq.setHeader('Authorization', auth);
-        }
+        if (auth) proxyReq.setHeader('Authorization', auth);
       },
     },
   };
