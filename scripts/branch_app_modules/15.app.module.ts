@@ -4,10 +4,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CampusModule } from './campus/campus.module';
-import { InstructorsModule } from './instructors/instructors.module';
 import { ProgramsModule } from './programs/programs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { RoomsModule } from './rooms/rooms.module';
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     CampusModule,
     ProgramsModule,
-    InstructorsModule,
+    RoomsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
