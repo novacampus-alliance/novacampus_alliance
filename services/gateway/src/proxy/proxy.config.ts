@@ -12,19 +12,25 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     path: '/api/auth',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
-    label: 'Svc AcadÃ©mique â€” authentification',
+    label: 'Svc Académique — authentification',
   },
   {
     path: '/api/campus',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
-    label: 'Svc AcadÃ©mique â€” campus',
+    label: 'Svc Académique — campus',
   },
   {
     path: '/api/programs',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
-    label: 'Svc AcadÃ©mique â€” programmes',
+    label: 'Svc Académique — programmes',
+  },
+  {
+    path: '/api/instructors',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — enseignants',
   },
   {
     path: '/api/courses',
@@ -42,7 +48,13 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     path: '/api/instructors',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
-    label: 'Svc Académique — enseignants',
+    label: 'Svc Académique — salles',
+  },
+  {
+    path: '/api/schedules',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — plannings',
   },
   {
     path: '/api/rooms',
@@ -66,7 +78,7 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     path: '/api/v1',
     envKey: 'AI_SERVICE_URL',
     defaultUrl: 'http://localhost:8000',
-    label: 'Svc IA â€” relance financiÃ¨re',
+    label: 'Svc IA — relance financière',
   },
 ];
 
