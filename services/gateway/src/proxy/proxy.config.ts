@@ -33,21 +33,22 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     label: 'Svc Académique — enseignants',
   },
   {
-    path: '/api/courses',
-    envKey: 'ACADEMIC_SERVICE_URL',
-    defaultUrl: 'http://localhost:3002',
-    label: 'Svc Académique — cours',
-  },
-  {
     path: '/api/students',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
     label: 'Svc Académique — étudiants',
   },
   {
-    path: '/api/instructors',
+    path: '/api/courses',
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — cours',
+  },
+  {
+    path: '/api/enrollments',
+    envKey: 'ACADEMIC_SERVICE_URL',
+    defaultUrl: 'http://localhost:3002',
+    label: 'Svc Académique — inscriptions',
     label: 'Svc Académique — salles',
   },
   {
