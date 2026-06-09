@@ -11,6 +11,7 @@ import { RoomsModule } from './rooms/rooms.module';
 import { SchedulesModule } from './schedules/schedules.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { StudentsModule } from './students/students.module';
 
 @Module({
   imports: [
@@ -20,10 +21,12 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     CampusModule,
     ProgramsModule,
+    RoomsModule,
     InstructorsModule,
     CoursesModule,
     RoomsModule,
     SchedulesModule,
+    StudentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
