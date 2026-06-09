@@ -26,7 +26,7 @@ export class AppController {
       service: 'api-gateway',
       message: 'Point d entree unique SOA Novacampus Alliance',
       routes: {
-        academic: '/api/auth, /api/campus, /api/programs, /api/rooms',
+        academic: '/api/auth, /api/campus, /api/programs, /api/instructors, /api/courses, /api/students, /api/rooms',
         billing: '/api/payments',
         notification: '/api/notifications',
         ai: '/api/v1',
