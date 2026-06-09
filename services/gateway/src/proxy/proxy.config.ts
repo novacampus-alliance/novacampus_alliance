@@ -49,7 +49,6 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     envKey: 'ACADEMIC_SERVICE_URL',
     defaultUrl: 'http://localhost:3002',
     label: 'Svc Académique — inscriptions',
-    label: 'Svc Académique — salles',
   },
   {
     path: '/api/schedules',
