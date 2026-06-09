@@ -66,7 +66,13 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     path: '/api/payments',
     envKey: 'BILLING_SERVICE_URL',
     defaultUrl: 'http://localhost:3003',
-    label: 'Svc Facturation',
+    label: 'Svc Facturation — payments (Prisma)',
+  },
+  {
+    path: '/api/paiements',
+    envKey: 'BILLING_SERVICE_URL',
+    defaultUrl: 'http://localhost:3003',
+    label: 'Svc Facturation — paiements (MongoDB)',
   },
   {
     path: '/api/notifications',

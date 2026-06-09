@@ -21,8 +21,10 @@ async function bootstrap() {
       process.env[route.envKey] ?? route.defaultUrl;
 
     expressApp.use(
-      route.path,
-      createProxyMiddleware(buildProxyOptions(target, route.path)),
+      createProxyMiddleware({
+        ...buildProxyOptions(target),
+        pathFilter: route.path,
+      }),
     );
 
     logger.log(`${route.path} → ${target} (${route.label})`);
@@ -32,8 +34,10 @@ async function bootstrap() {
   const academicUrl =
     process.env.ACADEMIC_SERVICE_URL ?? 'http://localhost:3002';
   expressApp.use(
-    '/api',
-    createProxyMiddleware(buildProxyOptions(academicUrl, '/api')),
+    createProxyMiddleware({
+      ...buildProxyOptions(academicUrl),
+      pathFilter: '/api',
+    }),
   );
 
   app.enableCors({
