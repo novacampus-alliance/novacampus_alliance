@@ -63,6 +63,16 @@ async function verifyToken(token: string): Promise<JwtPayload | null> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // DEV UNIQUEMENT : permet de prévisualiser les portails sans backend ni login.
+  // Ne s'active jamais en production (garde-fou sur NODE_ENV) et reste inactif
+  // tant que DEV_AUTH_BYPASS n'est pas mis à "1" dans .env.local.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.DEV_AUTH_BYPASS === '1'
+  ) {
+    return NextResponse.next();
+  }
+
   // Pages publiques → laisser passer sans vérification
   if (isPublicPath(pathname)) {
     return NextResponse.next();
