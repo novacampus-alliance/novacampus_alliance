@@ -185,11 +185,12 @@ services:
       - "3000"
     environment:
       JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_URL: http://gateway:3000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
       NODE_ENV: production
-    # depends_on:
-    #   - gateway
+    depends_on:
+      - gateway
     networks:
       - novacampus_network
 
