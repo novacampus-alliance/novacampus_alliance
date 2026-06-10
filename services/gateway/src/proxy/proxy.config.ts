@@ -77,7 +77,7 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
   {
     path: '/api/notifications',
     envKey: 'NOTIFICATION_SERVICE_URL',
-    defaultUrl: 'http://localhost:3004',
+    defaultUrl: 'http://localhost:3003',
     label: 'Svc Notification',
   },
   {

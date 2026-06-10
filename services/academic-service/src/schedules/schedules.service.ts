@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -9,6 +10,11 @@ import { parseTimeToDate, timesOverlap } from '../common/utils/time.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
+
+const DAYS: Record<number, string> = {
+  1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi',
+  5: 'Vendredi', 6: 'Samedi', 7: 'Dimanche',
+};
 
 const scheduleDetailInclude = {
   course: {
@@ -42,12 +48,24 @@ const scheduleDetailInclude = {
   },
 } satisfies Prisma.ScheduleInclude;
 
+const beforeSnapshotInclude = {
+  room:       { select: { room_name: true } },
+  instructor: { select: { first_name: true, last_name: true, email: true } },
+  course:     { select: { course_name: true } },
+} satisfies Prisma.ScheduleInclude;
+
 type ScheduleWithRelations = Prisma.ScheduleGetPayload<{
   include: typeof scheduleDetailInclude;
 }>;
 
+type ScheduleBefore = Prisma.ScheduleGetPayload<{
+  include: typeof beforeSnapshotInclude;
+}>;
+
 @Injectable()
 export class SchedulesService {
+  private readonly logger = new Logger(SchedulesService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async findAll(
@@ -162,6 +180,7 @@ export class SchedulesService {
   async update(id: string, dto: UpdateScheduleDto) {
     const existing = await this.prisma.schedule.findUnique({
       where: { schedule_id: id },
+      include: beforeSnapshotInclude,
     });
     if (!existing) {
       throw new NotFoundException(`Planning introuvable : ${id}`);
@@ -207,8 +226,76 @@ export class SchedulesService {
       data,
       include: scheduleDetailInclude,
     });
+
+    const roomChanged = dto.room_id !== undefined && dto.room_id !== existing.room_id;
+    const timeChanged =
+      (dto.day_of_week !== undefined && dto.day_of_week !== existing.day_of_week) ||
+      dto.start_time !== undefined ||
+      dto.end_time !== undefined;
+
+    if (roomChanged || timeChanged) {
+      this.sendScheduleChangeNotifications(existing, schedule).catch((err) =>
+        this.logger.error(`Notification planning echouee : ${err.message}`),
+      );
+    }
+
     return schedule;
   }
+
+  // ── Notification inter-service ────────────────────────────────────────────────
+
+  private async sendScheduleChangeNotifications(
+    before: ScheduleBefore,
+    after: ScheduleWithRelations,
+  ) {
+    const fmt = (d: Date) =>
+      `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+
+    const beforeDesc = `${DAYS[before.day_of_week] ?? `Jour ${before.day_of_week}`} ${fmt(before.start_time)}–${fmt(before.end_time)} — salle ${before.room.room_name}`;
+    const afterDesc  = `${DAYS[after.day_of_week] ?? `Jour ${after.day_of_week}`} ${fmt(after.start_time)}–${fmt(after.end_time)} — salle ${after.room.room_name}`;
+
+    const message = `Votre cours "${before.course.course_name}" a été modifié.`;
+    const details = `Avant : ${beforeDesc}\nAprès : ${afterDesc}`;
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { course_id: before.course_id },
+      include: {
+        student: { include: { user: { select: { user_id: true } } } },
+      },
+    });
+
+    const userIds: string[] = enrollments
+      .map((e) => e.student?.user?.user_id)
+      .filter((uid): uid is string => !!uid);
+
+    if (before.instructor.email) {
+      const instrUser = await this.prisma.user.findFirst({
+        where: { email: before.instructor.email },
+        select: { user_id: true },
+      });
+      if (instrUser) userIds.push(instrUser.user_id);
+    }
+
+    const unique = [...new Set(userIds)];
+    const notifUrl =
+      process.env.NOTIFICATION_SERVICE_URL ?? 'http://notification-service:3003';
+
+    await Promise.allSettled(
+      unique.map((user_id) =>
+        fetch(`${notifUrl}/notifications/internal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id, type: 'SCHEDULE_CHANGE', message, details }),
+        }),
+      ),
+    );
+
+    this.logger.log(
+      `Notification changement planning envoyee a ${unique.length} utilisateur(s)`,
+    );
+  }
+
+  // ── Helpers privés ────────────────────────────────────────────────────────────
 
   private async assertNoRoomConflict(
     roomId: string,
