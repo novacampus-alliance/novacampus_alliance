@@ -1,0 +1,449 @@
+{
+  "info": {
+    "name": "Novacampus — Issue #32 Notifications",
+    "description": "Tests du service de notifications multicanal.\n\nBranche : `32-implementer-le-service-de-notifications-mail-push`\n\nEndpoints :\n- GET  /api/notifications         → liste les notifs de l'utilisateur connecté (JWT)\n- PUT  /api/notifications/:id/lire → marque une notif comme lue (JWT)\n- POST /api/notifications/internal → endpoint interne inter-services (no auth)\n\nMail UI (MailHog) : http://localhost:8025\n\nTypes valides : SCHEDULE_CHANGE | PAYMENT_REMINDER | PAYMENT_OVERDUE | ENROLLMENT_REMINDER | INFO",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",        "value": "http://localhost" },
+    { "key": "token",           "value": "" },
+    { "key": "user_id",         "value": "" },
+    { "key": "student_id",      "value": "" },
+    { "key": "notification_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [
+        {
+          "name": "Login (admin) → stocke token + user_id",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.access_token) {",
+                "  pm.collectionVariables.set('token', body.access_token);",
+                "  if (body.user && body.user.user_id) pm.collectionVariables.set('user_id', body.user.user_id);",
+                "  pm.test('Login OK — token stocké', () => pm.expect(body.access_token).to.be.a('string'));",
+                "} else {",
+                "  pm.test('Login OK', () => pm.response.to.have.status(200));",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login (étudiant) → stocke token + student_id",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200 || pm.response.code === 201) {",
+                "  const body = pm.response.json();",
+                "  pm.collectionVariables.set('token', body.access_token);",
+                "  if (body.user) {",
+                "    pm.collectionVariables.set('user_id', body.user.id);",
+                "    if (body.user.id) pm.collectionVariables.set('student_id', body.user.id);",
+                "  }",
+                "  pm.test('Login étudiant OK', () => pm.expect(body.access_token).to.be.a('string'));",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"etudiant@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Endpoint interne (POST /internal)",
+      "description": "Endpoint appelé par les autres microservices. Pas de JWT requis.\nSi student_id est vide, la notif ne sera pas créée (null retourné silencieusement).",
+      "item": [
+        {
+          "name": "POST internal — par user_id (INFO)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 201', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.notification_id) {",
+                "  pm.collectionVariables.set('notification_id', body.notification_id);",
+                "  pm.test('notification_id présent', () => pm.expect(body.notification_id).to.be.a('string'));",
+                "  pm.test('read = false par défaut', () => pm.expect(body.read).to.equal(false));",
+                "} else {",
+                "  pm.test('⚠ Body vide — user_id non renseigné ?', () => pm.expect(pm.collectionVariables.get('user_id')).to.not.be.empty);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"INFO\",\n  \"message\": \"Bienvenue sur NovaCampus ! Votre compte est actif.\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        },
+        {
+          "name": "POST internal — par student_id (PAYMENT_REMINDER)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 201', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.notification_id) {",
+                "  pm.collectionVariables.set('notification_id', body.notification_id);",
+                "  pm.test('notification_id présent', () => pm.expect(body.notification_id).to.be.a('string'));",
+                "} else {",
+                "  pm.test('⚠ Body vide — student_id non renseigné ou user introuvable', () => pm.expect(pm.collectionVariables.get('student_id')).to.not.be.empty);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_id\": \"{{student_id}}\",\n  \"type\": \"PAYMENT_REMINDER\",\n  \"message\": \"Votre paiement de 1500.00 EUR est dû dans 3 jours (13/06/2026).\",\n  \"details\": \"Référence paiement : PAY-2026-00042\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        },
+        {
+          "name": "POST internal — changement emploi du temps (SCHEDULE_CHANGE)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 201', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.notification_id) {",
+                "  pm.collectionVariables.set('notification_id', body.notification_id);",
+                "  pm.test('notification_id présent', () => pm.expect(body.notification_id).to.be.a('string'));",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"SCHEDULE_CHANGE\",\n  \"message\": \"Votre cours \\\"Programmation Web\\\" a été modifié.\",\n  \"details\": \"Avant : Lundi 08:00–10:00 — salle A101\\nAprès : Mardi 14:00–16:00 — salle B203\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        },
+        {
+          "name": "POST internal — paiement en retard (PAYMENT_OVERDUE)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 201', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.notification_id) pm.collectionVariables.set('notification_id', body.notification_id);"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"PAYMENT_OVERDUE\",\n  \"message\": \"Votre paiement (FAC-2026-00001) de 750 EUR est en retard depuis le 01/06/2026. Veuillez régulariser votre situation.\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        },
+        {
+          "name": "POST internal — rappel 7 jours (ENROLLMENT_REMINDER)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 201', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.notification_id) pm.collectionVariables.set('notification_id', body.notification_id);"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"ENROLLMENT_REMINDER\",\n  \"message\": \"Rappel : votre échéance de paiement de 1500.00 EUR approche dans 7 jours (17/06/2026).\",\n  \"details\": \"Année académique 2025-2026 — référence : PAY-2026-00099\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        },
+        {
+          "name": "POST internal — type invalide → 400",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 400 — type invalide refusé', () => pm.response.to.have.status(400));"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"TYPE_INEXISTANT\",\n  \"message\": \"Test type invalide\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        },
+        {
+          "name": "POST internal — ni user_id ni student_id → body vide",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 201', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "pm.test('Body vide ou null (aucun destinataire)', () => pm.expect(body == null || body === '').to.equal(true));"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"INFO\",\n  \"message\": \"Test sans destinataire\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Lecture (GET /notifications)",
+      "item": [
+        {
+          "name": "GET notifications — utilisateur connecté",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 200', () => pm.response.to.have.status(200));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (!body) return;",
+                "pm.test('Champs count et data présents', () => {",
+                "  pm.expect(body).to.have.property('count');",
+                "  pm.expect(body).to.have.property('data');",
+                "  pm.expect(body.data).to.be.an('array');",
+                "});",
+                "if (body.data && body.data.length > 0) {",
+                "  pm.collectionVariables.set('notification_id', body.data[0].notification_id);",
+                "  const n = body.data[0];",
+                "  pm.test('Structure notification valide', () => {",
+                "    pm.expect(n).to.have.keys(['notification_id','type','message','sent_at','read']);",
+                "  });",
+                "  pm.test('read est un booléen', () => pm.expect(n.read).to.be.a('boolean'));",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/notifications"
+          }
+        },
+        {
+          "name": "GET notifications — sans token → 401",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 401 sans token', () => pm.response.to.have.status(401));"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/notifications"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — Marquer comme lu (PUT /:id/lire)",
+      "item": [
+        {
+          "name": "PUT :id/lire — marque la première notification",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 200', () => pm.response.to.have.status(200));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body) {",
+                "  pm.test('read = true', () => pm.expect(body.read).to.equal(true));",
+                "  pm.test('notification_id présent', () => pm.expect(body.notification_id).to.be.a('string'));",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "url": "{{base_url}}/api/notifications/{{notification_id}}/lire"
+          }
+        },
+        {
+          "name": "GET notifications — vérifie read=true après",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 200', () => pm.response.to.have.status(200));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (!body || !body.data) return;",
+                "const target = body.data.find(n => n.notification_id === pm.collectionVariables.get('notification_id'));",
+                "if (target) pm.test('Notification bien marquée lue', () => pm.expect(target.read).to.equal(true));"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{base_url}}/api/notifications"
+          }
+        },
+        {
+          "name": "PUT :id/lire — ID inexistant → 404",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 404 — notification inexistante', () => pm.response.to.have.status(404));"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "url": "{{base_url}}/api/notifications/id-qui-nexiste-pas/lire"
+          }
+        },
+        {
+          "name": "PUT :id/lire — sans token → 401",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Statut 401 sans token', () => pm.response.to.have.status(401));"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/notifications/{{notification_id}}/lire"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 — Scénarios end-to-end",
+      "description": "Flux complets. Vérifier les emails dans MailHog : http://localhost:8025",
+      "item": [
+        {
+          "name": "Scénario A — Changement planning",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Notif créée (201)', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.notification_id) {",
+                "  pm.test('notification_id présent', () => pm.expect(body.notification_id).to.be.a('string'));",
+                "  console.log('✅ Vérifier MailHog : http://localhost:8025 — objet : Modification de votre emploi du temps');",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"SCHEDULE_CHANGE\",\n  \"message\": \"Votre cours \\\"Mathématiques\\\" a été modifié.\",\n  \"details\": \"Avant : Mercredi 10:00–12:00 — salle C305\\nAprès : Jeudi 08:00–10:00 — salle A101\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        },
+        {
+          "name": "Scénario B — Paiement en retard",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Notif créée (201)', () => pm.response.to.have.status(201));",
+                "let body; try { body = pm.response.json(); } catch(e) {}",
+                "if (body && body.notification_id) {",
+                "  pm.test('notification_id présent', () => pm.expect(body.notification_id).to.be.a('string'));",
+                "  console.log('✅ Vérifier MailHog : http://localhost:8025 — objet : Paiement en retard');",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"PAYMENT_OVERDUE\",\n  \"message\": \"Votre paiement (FAC-2026-00007) de 2500 EUR est en retard depuis le 01/05/2026. Veuillez régulariser votre situation.\"\n}"
+            },
+            "url": "{{base_url}}/api/notifications/internal"
+          }
+        }
+      ]
+    }
+  ]
+}
