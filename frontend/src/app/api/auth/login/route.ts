@@ -32,8 +32,12 @@ export async function POST(request: NextRequest) {
   const role = data.user.role as UserRole;
   const redirectTo = ROLE_HOME_PATH[role] ?? '/';
 
-  // 4. Poser le JWT dans un cookie httpOnly
-  const response = NextResponse.json({ user: data.user, redirectTo });
+  // 4. Poser le JWT dans un cookie httpOnly (+ access_token pour Postman / clients API)
+  const response = NextResponse.json({
+    user: data.user,
+    redirectTo,
+    access_token: data.access_token,
+  });
   response.cookies.set(ACCESS_TOKEN_COOKIE, data.access_token, {
     httpOnly: true, // JavaScript ne peut pas lire ce cookie
     secure: process.env.NODE_ENV === 'production', // HTTPS uniquement en prod
