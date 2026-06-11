@@ -13,31 +13,170 @@ import type { AiConflictSuggestion, AiSuggestion } from '@/lib/api';
 import { formatDate, formatTime } from '@/lib/format';
 import type { ScheduleConflict } from '@/lib/types';
 
-const DAY_NAMES = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const SUGGESTION_TYPE_LABEL: Record<string, string> = {
+  change_room: 'Changer de salle',
+  reschedule: 'Déplacer le créneau',
+  change_instructor: "Changer d'enseignant",
+};
+const SUGGESTION_TYPE_ICON: Record<string, string> = {
+  change_room: '🏫',
+  reschedule: '📅',
+  change_instructor: '👤',
+};
+
+const DAY_NAMES = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
 const CONFIDENCE_STYLE: Record<string, string> = {
-  high: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  medium: 'bg-amber-100 text-amber-800 border-amber-300',
-  low: 'bg-red-100 text-red-800 border-red-300',
+  high: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  medium: 'bg-amber-100 text-amber-700 border-amber-200',
+  low: 'bg-red-100 text-red-700 border-red-200',
 };
 const CONFIDENCE_LABEL: Record<string, string> = {
-  high: 'Élevée',
-  medium: 'Moyenne',
-  low: 'Faible',
+  high: 'Confiance élevée',
+  medium: 'Confiance moyenne',
+  low: 'Confiance faible',
 };
 
-function suggestionLabel(s: AiSuggestion): string {
+function suggestionValue(s: AiSuggestion): string {
   if (s.type === 'change_room') {
-    return `Changer la salle → ${s.proposedRoomName ?? s.proposedRoomId ?? '?'}`;
+    return s.proposedRoomName ?? s.proposedRoomId ?? '—';
   }
   if (s.type === 'reschedule') {
-    const day = s.proposedDayOfWeek ? DAY_NAMES[s.proposedDayOfWeek] : '?';
-    return `Redéplanifier → ${day} ${s.proposedStartTime ?? ''}–${s.proposedEndTime ?? ''}`;
+    const day = s.proposedDayOfWeek ? DAY_NAMES[s.proposedDayOfWeek] : '';
+    const hours = s.proposedStartTime && s.proposedEndTime
+      ? `${s.proposedStartTime.slice(0, 5)} – ${s.proposedEndTime.slice(0, 5)}`
+      : '';
+    return [day, hours].filter(Boolean).join(', ') || '—';
   }
   if (s.type === 'change_instructor') {
-    return `Changer l'enseignant → ${s.proposedInstructorName ?? s.proposedInstructorId ?? '?'}`;
+    return s.proposedInstructorName ?? s.proposedInstructorId ?? '—';
   }
-  return s.type;
+  return '—';
+}
+
+function AiPanel({
+  ai,
+  conflictId,
+  applying,
+  onApply,
+  onReanalyze,
+}: {
+  ai: AiConflictSuggestion;
+  conflictId: string;
+  applying: Set<string>;
+  onApply: (s: AiSuggestion) => void;
+  onReanalyze: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const best = ai.suggestions.find((s) => s.confidence === 'high') ?? ai.suggestions[0];
+
+  return (
+    <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 overflow-hidden">
+      {/* En-tête IA */}
+      <div className="flex items-center gap-2 border-b border-violet-100 bg-white/60 px-3 py-2">
+        <span className="rounded-full bg-violet-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+          Agent M7
+        </span>
+        <span className="text-[11px] text-violet-500">
+          {ai.provider}{ai.model ? ` · ${ai.model}` : ''}
+        </span>
+        {best && (
+          <span className={`ml-auto rounded border px-1.5 py-0.5 text-[10px] font-medium ${CONFIDENCE_STYLE[best.confidence]}`}>
+            {CONFIDENCE_LABEL[best.confidence]}
+          </span>
+        )}
+      </div>
+
+      {/* Corps */}
+      <div className="p-3 space-y-2">
+        {/* Résumé */}
+        {ai.conflictSummary && (
+          <p className="text-xs font-medium text-violet-900">{ai.conflictSummary}</p>
+        )}
+
+        {/* Explication masquée par défaut */}
+        <div>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-800"
+          >
+            <span>{open ? '▾' : '▸'}</span>
+            <span>{open ? 'Masquer l\'analyse détaillée' : 'Voir l\'analyse détaillée'}</span>
+          </button>
+          {open && (
+            <p className="mt-1.5 text-xs text-violet-800 leading-relaxed whitespace-pre-line border-l-2 border-violet-300 pl-2.5">
+              {ai.explanation}
+            </p>
+          )}
+        </div>
+
+        {/* Suggestions */}
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500">
+            Solutions proposées
+          </p>
+          {ai.suggestions.map((s, i) => {
+            const key = `${conflictId}-${s.targetScheduleId}-${s.type}`;
+            const isApplying = applying.has(key);
+            const isRecommended = s === best && s.confidence === 'high';
+            return (
+              <div
+                key={i}
+                className={`flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-2 ${
+                  isRecommended ? 'border-emerald-200 ring-1 ring-emerald-200' : 'border-violet-100'
+                }`}
+              >
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm" aria-hidden>
+                      {SUGGESTION_TYPE_ICON[s.type] ?? '•'}
+                    </span>
+                    <span className="text-xs font-semibold text-gray-800">
+                      {SUGGESTION_TYPE_LABEL[s.type] ?? s.type}
+                    </span>
+                    {isRecommended && (
+                      <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+                        Recommandé
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    {suggestionValue(s)}
+                  </p>
+                  {s.impact && (
+                    <p className="text-[11px] text-gray-400 leading-snug">{s.impact}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={`rounded border px-1.5 py-0.5 text-[9px] font-medium ${CONFIDENCE_STYLE[s.confidence]}`}>
+                    {CONFIDENCE_LABEL[s.confidence]}
+                  </span>
+                  <button
+                    onClick={() => onApply(s)}
+                    disabled={isApplying}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50 ${
+                      isRecommended
+                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                        : 'bg-violet-600 hover:bg-violet-700'
+                    }`}
+                  >
+                    {isApplying ? '…' : 'Appliquer'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={onReanalyze}
+          className="text-[11px] text-violet-400 underline underline-offset-2 hover:text-violet-700"
+        >
+          ↺ Réanalyser ce conflit
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminConflictsPage() {
@@ -211,68 +350,13 @@ export default function AdminConflictsPage() {
               )}
 
               {ai && (
-                <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-3">
-                  {/* Badge IA */}
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="rounded-full border border-violet-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
-                      Agent M7
-                    </span>
-                    <span className="text-[10px] text-violet-600">
-                      {ai.provider}{ai.model ? ` · ${ai.model}` : ''}
-                    </span>
-                  </div>
-
-                  {/* Explication */}
-                  <p className="mb-3 text-xs text-violet-900 leading-relaxed">
-                    {ai.explanation}
-                  </p>
-
-                  {/* Suggestions */}
-                  <div className="space-y-2">
-                    {ai.suggestions.map((s, i) => {
-                      const key = `${c.id}-${s.targetScheduleId}-${s.type}`;
-                      const isApplying = applying.has(key);
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-start justify-between gap-2 rounded-md border border-violet-100 bg-white px-3 py-2"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                              <span
-                                className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${CONFIDENCE_STYLE[s.confidence]}`}
-                              >
-                                Confiance : {CONFIDENCE_LABEL[s.confidence] ?? s.confidence}
-                              </span>
-                            </div>
-                            <p className="text-xs font-medium text-gray-800">
-                              {suggestionLabel(s)}
-                            </p>
-                            {s.impact && (
-                              <p className="mt-0.5 text-[11px] text-gray-500 leading-snug">
-                                {s.impact}
-                              </p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleApply(c.id, s)}
-                            disabled={isApplying}
-                            className="shrink-0 rounded-lg bg-violet-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-violet-800 disabled:opacity-50"
-                          >
-                            {isApplying ? '…' : 'Appliquer'}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    onClick={() => analyzeOne(c)}
-                    className="mt-2 text-[11px] text-violet-600 underline underline-offset-2 hover:text-violet-800"
-                  >
-                    Réanalyser
-                  </button>
-                </div>
+                <AiPanel
+                  ai={ai}
+                  conflictId={c.id}
+                  applying={applying}
+                  onApply={(s) => handleApply(c.id, s)}
+                  onReanalyze={() => analyzeOne(c)}
+                />
               )}
             </Card>
           );
