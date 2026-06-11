@@ -678,6 +678,7 @@ export async function fetchPaymentAlerts(): Promise<PaymentAlert[]> {
     const student = byId.get(p.studentId);
     return {
       id: p._id,
+      studentId: p.studentId,
       studentName: student
         ? `${student.first_name} ${student.last_name}`
         : p.studentId,

@@ -58,8 +58,10 @@ export default function AdminDashboardPage() {
   ).length;
 
   async function sendOne(s: DashboardStudent) {
-    await triggerReminder(s.id);
-    setToast(`Relance envoyee a ${s.name}.`);
+    const alert = alerts.find((a) => a.studentId === s.id);
+    if (!alert) return;
+    await triggerReminder(alert.id);
+    setToast(`Relance envoyée à ${s.name}.`);
     setTimeout(() => setToast(null), 3000);
   }
 

@@ -37,6 +37,7 @@ export default function AdminConflictsPage() {
     });
     setToast(`Salle ${roomName} attribuée. Conflit résolu.`);
     setTimeout(() => setToast(null), 3000);
+    fetchConflicts().then(setConflicts);
   }
 
   const open = conflicts.filter((c) => !resolved.has(c.id));

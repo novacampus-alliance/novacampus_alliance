@@ -171,6 +171,7 @@ export interface DashboardStudent {
 /** Carte d'alerte de paiement du rail de droite. */
 export interface PaymentAlert {
   id: string;
+  studentId: string;
   studentName: string;
   amount: number;
   detail: string;
