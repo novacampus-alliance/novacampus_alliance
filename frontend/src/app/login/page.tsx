@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { resetIdentityCaches } from '@/lib/api';
 import { LogoFull } from '@/components/logo';
 
 function LoginForm() {
@@ -33,6 +34,10 @@ function LoginForm() {
         setError(message);
         return;
       }
+
+      // Nouveau compte : on purge les caches d'identité du bundle client,
+      // sinon les pages réafficheraient les données de l'utilisateur précédent.
+      resetIdentityCaches();
 
       // Seuls les chemins internes sont acceptes : un lien forge du type
       // /login?redirect=https://evil.com ne doit pas sortir du site.

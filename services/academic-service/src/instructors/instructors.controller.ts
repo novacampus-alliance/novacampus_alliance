@@ -29,12 +29,15 @@ export class InstructorsController {
 
   /**
    * GET /api/instructors
-   * Liste tous les enseignants. Filtre optionnel : ?campus_id=xxx
+   * Liste tous les enseignants. Filtres optionnels : ?campus_id=xxx, ?email=xxx
    */
   @Get()
   @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
-  findAll(@Query('campus_id') campusId?: string) {
-    return this.instructorsService.findAll(campusId);
+  findAll(
+    @Query('campus_id') campusId?: string,
+    @Query('email') email?: string,
+  ) {
+    return this.instructorsService.findAll(campusId, email);
   }
 
   /**

@@ -110,15 +110,31 @@ let studentIdCache: string | null | undefined;
 let instructorIdCache: string | null | undefined;
 
 /**
- * Retrouve le student_id du compte connecté en croisant l'email du JWT avec
- * GET /api/students. Le rôle STUDENT n'y a pas accès (403 backend) : on
- * retourne alors null et les pages concernées affichent une liste vide.
+ * Purge les caches d'identité (session, student/instructor id, dossier).
+ * À appeler au login et au logout : la navigation Next est côté client
+ * (router.push), le bundle JS n'est pas rechargé, donc sans purge les pages
+ * continueraient d'afficher les données du compte précédent.
+ */
+export function resetIdentityCaches(): void {
+  sessionCache = undefined;
+  studentIdCache = undefined;
+  instructorIdCache = undefined;
+  dossierCache = undefined;
+}
+
+/**
+ * Retrouve le student_id du compte connecté : le sub du JWT est le user_id
+ * (table User), pas le student_id (table Student) — le lien se fait par email.
+ * GET /api/students?email=… (filtre backend) évite de rapatrier toute la liste ;
+ * le find() reste en garde-fou si le backend ignore le paramètre.
  */
 async function resolveStudentId(): Promise<string | null> {
   if (studentIdCache !== undefined) return studentIdCache;
   const session = await fetchSession();
   if (!session) return (studentIdCache = null);
-  const students = await apiGet<ApiStudent[]>('/students');
+  const students = await apiGet<ApiStudent[]>(
+    `/students?email=${encodeURIComponent(session.email)}`,
+  );
   const me = students?.find(
     (s) => s.email?.toLowerCase() === session.email.toLowerCase(),
   );
@@ -126,17 +142,53 @@ async function resolveStudentId(): Promise<string | null> {
   return studentIdCache;
 }
 
-/** Même logique pour l'enseignant connecté via GET /api/instructors. */
+/** Même logique pour l'enseignant connecté via GET /api/instructors?email=… */
 async function resolveInstructorId(): Promise<string | null> {
   if (instructorIdCache !== undefined) return instructorIdCache;
   const session = await fetchSession();
   if (!session) return (instructorIdCache = null);
-  const instructors = await apiGet<ApiInstructor[]>('/instructors');
+  const instructors = await apiGet<ApiInstructor[]>(
+    `/instructors?email=${encodeURIComponent(session.email)}`,
+  );
   const me = instructors?.find(
     (i) => i.email?.toLowerCase() === session.email.toLowerCase(),
   );
   instructorIdCache = me?.instructor_id ?? null;
   return instructorIdCache;
+}
+
+// ─── Dossier étudiant (source unique : inscriptions + factures Prisma) ──────
+
+interface ApiDossierPayment {
+  payment_id: string;
+  amount: string | number;
+  status: string;
+  invoice_date?: string | null;
+  due_date: string;
+  payment_date?: string | null;
+  academic_year?: string | null;
+  semester?: number | null;
+}
+
+interface ApiDossier {
+  student_id: string;
+  inscriptions: { course_id: string }[];
+  factures: ApiDossierPayment[];
+}
+
+let dossierCache: ApiDossier | null | undefined;
+
+/**
+ * Dossier complet de l'étudiant connecté — GET /api/students/:id/dossier
+ * (accessible au rôle STUDENT). Contient toutes ses inscriptions (notées ou
+ * non) et ses factures Prisma. Mis en cache pour la durée de la session.
+ */
+async function fetchOwnDossier(): Promise<ApiDossier | null> {
+  if (dossierCache !== undefined) return dossierCache;
+  const studentId = await resolveStudentId();
+  if (!studentId) return (dossierCache = null);
+  dossierCache = await apiGet<ApiDossier>(`/students/${studentId}/dossier`);
+  return dossierCache;
 }
 
 // ─── Contrats backend (formes renvoyées par les services) ───────────────────
@@ -298,6 +350,21 @@ interface ApiPaiement {
   relances?: unknown[];
 }
 
+/** Paiement Prisma (Postgres) — GET /api/payments du service facturation. */
+interface ApiPaymentPrisma {
+  payment_id: string;
+  student_id: string;
+  invoice_date: string;
+  due_date: string;
+  payment_date?: string | null;
+  amount: string | number;
+  status: string;
+  academic_year?: string | null;
+  semester?: number | null;
+  /** Nombre de relances (relance_history) — absent si backend non rebuildé. */
+  relances_count?: number;
+}
+
 interface ApiNotification {
   notification_id: string;
   user_id: string;
@@ -357,8 +424,14 @@ function toNumber(value: string | number | null | undefined): number | null {
 
 function mapPaymentStatus(statut: string | undefined): InvoiceStatus {
   if (statut === 'paye' || statut === 'a_jour') return 'PAID';
-  if (statut === 'en_retard') return 'OVERDUE';
+  if (statut === 'en_retard' || statut === 'escalade_humain') return 'OVERDUE';
   return 'PENDING';
+}
+
+/** Référence d'affichage d'un paiement Prisma (pas de numéro de facture en BDD). */
+function paymentReference(paymentId: string, academicYear?: string | null): string {
+  const year = (academicYear ?? '').split('-')[0] || 'NC';
+  return `FAC-${year}-${paymentId.slice(-6).toUpperCase()}`;
 }
 
 function mapStudentStatus(status: string | null | undefined): AdminStudent['status'] {
@@ -426,9 +499,27 @@ async function fetchAllSchedules(): Promise<ScheduleSlot[]> {
   return schedules ? schedules.map(mapSchedule) : [];
 }
 
-/** EDT du portail étudiant — GET /api/schedules (lecture autorisée au rôle STUDENT). */
+/**
+ * EDT de l'étudiant connecté — filtré sur les cours où il est inscrit.
+ * Les course_id viennent du dossier (toutes les inscriptions, notées ou non —
+ * contrairement à /notes qui exclut les cours du semestre en cours sans note).
+ */
 export async function fetchSchedule(): Promise<ScheduleSlot[]> {
-  return fetchAllSchedules();
+  const [schedules, dossier] = await Promise.all([
+    apiGet<ApiScheduleSlot[]>('/schedules'),
+    fetchOwnDossier(),
+  ]);
+  if (!schedules) return [];
+
+  const myCourseIds = new Set(
+    (dossier?.inscriptions ?? []).map((e) => e.course_id),
+  );
+  // Sans inscriptions connues (dossier inaccessible), on affiche tout.
+  if (!myCourseIds.size) return schedules.map(mapSchedule);
+
+  return schedules
+    .filter((s) => myCourseIds.has(s.course_id))
+    .map(mapSchedule);
 }
 
 /** EDT enseignant — GET /api/schedules filtré sur l'enseignant connecté. */
@@ -657,14 +748,43 @@ export async function fetchTranscript(): Promise<TranscriptEntry[]> {
 
 // ─── Facturation ─────────────────────────────────────────────────────────────
 
-/** Factures de l'étudiant connecté — GET /api/paiements/etudiant/:id/historique. */
+/** Facture Prisma du dossier étudiant → modèle Invoice du front. */
+function mapDossierPayment(p: ApiDossierPayment, studentId: string): Invoice {
+  const amount = Number(p.amount);
+  const year = p.academic_year ?? '';
+  const label = `Frais de scolarite ${year}${p.semester != null ? ` S${p.semester}` : ''}`.trim();
+  return {
+    id: p.payment_id,
+    reference: paymentReference(p.payment_id, p.academic_year),
+    studentId,
+    amount,
+    currency: 'EUR',
+    status: mapPaymentStatus(p.status),
+    issuedAt: p.invoice_date ?? p.due_date,
+    dueAt: p.due_date,
+    paidAt: p.payment_date ?? undefined,
+    description: label,
+    lines: [{ label, quantity: 1, unitPrice: amount }],
+  };
+}
+
+/**
+ * Factures de l'étudiant connecté, en cascade :
+ *  1. GET /paiements/etudiant/:id/historique (MongoDB — collection `paiements`,
+ *     vide si la seed n'a peuplé que `factures`)
+ *  2. Fallback : factures Prisma du dossier étudiant (GET /students/:id/dossier)
+ */
 export async function fetchInvoices(): Promise<Invoice[]> {
   const studentId = await resolveStudentId();
   if (!studentId) return [];
+
   const history = await apiGet<{ paiements: ApiPaiement[] }>(
     `/paiements/etudiant/${studentId}/historique`,
   );
-  return history?.paiements ? history.paiements.map(mapPaiement) : [];
+  if (history?.paiements?.length) return history.paiements.map(mapPaiement);
+
+  const dossier = await fetchOwnDossier();
+  return (dossier?.factures ?? []).map((p) => mapDossierPayment(p, studentId));
 }
 
 /** Détail d'une facture — GET /api/paiements/:id. */
@@ -675,28 +795,56 @@ export async function fetchInvoice(id: string): Promise<Invoice | null> {
   return all.find((inv) => inv.id === id) ?? null;
 }
 
-/** Tableau des paiements (admin) — GET /api/paiements, noms via GET /api/students. */
+/**
+ * Tableau des paiements (admin), en cascade :
+ *  1. GET /api/paiements (MongoDB — collection `paiements`, vide si la seed
+ *     n'a peuplé que `factures`)
+ *  2. Fallback : GET /api/payments (Prisma/Postgres, source réelle de la seed,
+ *     avec le compteur de relances de relance_history)
+ * Les noms et campus viennent de GET /api/students dans les deux cas.
+ */
 export async function fetchPayments(): Promise<PaymentRow[]> {
-  const result = await apiGet<{ data: ApiPaiement[] }>('/paiements');
-  if (!result?.data) return [];
-
-  const students = await apiGet<ApiStudent[]>('/students');
+  const [mongo, students] = await Promise.all([
+    apiGet<{ data: ApiPaiement[] }>('/paiements'),
+    apiGet<ApiStudent[]>('/students'),
+  ]);
   const byId = new Map((students ?? []).map((s) => [s.student_id, s]));
 
-  return result.data.map((p) => {
-    const student = byId.get(p.studentId);
+  if (mongo?.data?.length) {
+    return mongo.data.map((p) => {
+      const student = byId.get(p.studentId);
+      return {
+        invoiceId: p._id,
+        reference: p.numeroFacture ?? p._id,
+        studentName: student
+          ? `${student.first_name} ${student.last_name}`
+          : p.studentId,
+        studentId: p.studentId,
+        campus: student?.campus?.campus_name ?? '—',
+        amount: p.montantTotal,
+        status: mapPaymentStatus(p.statut),
+        dueAt: p.dateEcheance,
+        remindersSent: p.relances?.length ?? 0,
+      };
+    });
+  }
+
+  const prisma = await apiGet<{ data: ApiPaymentPrisma[] }>('/payments');
+  if (!prisma?.data) return [];
+  return prisma.data.map((p) => {
+    const student = byId.get(p.student_id);
     return {
-      invoiceId: p._id,
-      reference: p.numeroFacture ?? p._id,
+      invoiceId: p.payment_id,
+      reference: paymentReference(p.payment_id, p.academic_year),
       studentName: student
         ? `${student.first_name} ${student.last_name}`
-        : p.studentId,
-      studentId: p.studentId,
+        : p.student_id,
+      studentId: p.student_id,
       campus: student?.campus?.campus_name ?? '—',
-      amount: p.montantTotal,
-      status: mapPaymentStatus(p.statut),
-      dueAt: p.dateEcheance,
-      remindersSent: p.relances?.length ?? 0,
+      amount: Number(p.amount),
+      status: mapPaymentStatus(p.status),
+      dueAt: p.due_date,
+      remindersSent: p.relances_count ?? 0,
     };
   });
 }
@@ -791,27 +939,42 @@ export async function applyAiSuggestion(
   return apiSend('PUT', `/schedules/${suggestion.targetScheduleId}`, payload);
 }
 
-/** Alertes de paiement — GET /api/paiements/en-retard. */
+/**
+ * Alertes de paiement — GET /api/paiements/en-retard (MongoDB), avec fallback
+ * sur les paiements Prisma en retard (même cascade que fetchPayments).
+ */
 export async function fetchPaymentAlerts(): Promise<PaymentAlert[]> {
   const overdue = await apiGet<ApiPaiement[]>('/paiements/en-retard');
-  if (!overdue) return [];
 
-  const students = await apiGet<ApiStudent[]>('/students');
-  const byId = new Map((students ?? []).map((s) => [s.student_id, s]));
+  if (overdue?.length) {
+    const students = await apiGet<ApiStudent[]>('/students');
+    const byId = new Map((students ?? []).map((s) => [s.student_id, s]));
+    return overdue.map((p) => {
+      const student = byId.get(p.studentId);
+      return {
+        id: p._id,
+        studentId: p.studentId,
+        studentName: student
+          ? `${student.first_name} ${student.last_name}`
+          : p.studentId,
+        amount: p.soldeRestant ?? p.montantTotal,
+        detail: p.description ?? `Facture ${p.numeroFacture ?? ''} en retard`,
+        reminderLevel: Math.max(1, p.relances?.length ?? 1),
+      };
+    });
+  }
 
-  return overdue.map((p) => {
-    const student = byId.get(p.studentId);
-    return {
-      id: p._id,
-      studentId: p.studentId,
-      studentName: student
-        ? `${student.first_name} ${student.last_name}`
-        : p.studentId,
-      amount: p.soldeRestant ?? p.montantTotal,
-      detail: p.description ?? `Facture ${p.numeroFacture ?? ''} en retard`,
-      reminderLevel: Math.max(1, p.relances?.length ?? 1),
-    };
-  });
+  const rows = await fetchPayments();
+  return rows
+    .filter((r) => r.status === 'OVERDUE')
+    .map((r) => ({
+      id: r.invoiceId,
+      studentId: r.studentId,
+      studentName: r.studentName,
+      amount: r.amount,
+      detail: `Facture ${r.reference} en retard`,
+      reminderLevel: Math.min(3, Math.max(1, r.remindersSent || 1)),
+    }));
 }
 
 /**

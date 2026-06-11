@@ -52,13 +52,14 @@ const studentDetailInclude = {
       payment_id: true,
       amount: true,
       status: true,
+      invoice_date: true,
       due_date: true,
       payment_date: true,
       academic_year: true,
       semester: true,
     },
     orderBy: { due_date: 'desc' as const },
-    take: 10,
+    take: 50,
   },
   _count: { select: { enrollments: true, payments: true } },
 } satisfies Prisma.StudentInclude;
@@ -71,11 +72,12 @@ type StudentWithRelations = Prisma.StudentGetPayload<{
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(campusId?: string, programId?: string) {
+  async findAll(campusId?: string, programId?: string, email?: string) {
     const students = await this.prisma.student.findMany({
       where: {
         ...(campusId ? { campus_id: campusId } : {}),
         ...(programId ? { program_id: programId } : {}),
+        ...(email ? { email: { equals: email, mode: 'insensitive' } } : {}),
       },
       select: {
         ...studentBaseSelect,

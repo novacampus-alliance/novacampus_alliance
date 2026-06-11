@@ -10,6 +10,7 @@ import {
 } from '@/lib/nav-config';
 import type { AuthUser } from '@/lib/auth';
 import { ROLE_LABELS } from '@/lib/auth';
+import { resetIdentityCaches } from '@/lib/api';
 import { Icon } from '@/components/icons';
 import { LogoMark } from '@/components/logo';
 import { NotificationsBell } from '@/components/notifications';
@@ -77,6 +78,7 @@ export function AppShell({
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
+    resetIdentityCaches();
     router.push('/login');
     router.refresh();
   }
