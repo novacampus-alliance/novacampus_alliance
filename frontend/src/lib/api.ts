@@ -61,6 +61,16 @@ async function apiSend(
   path: string,
   body?: unknown,
 ): Promise<boolean> {
+  const result = await apiSendJson(method, path, body);
+  return result.ok;
+}
+
+/** Écriture avec corps JSON de réponse (ex. POST /students). */
+async function apiSendJson<T>(
+  method: 'POST' | 'PUT' | 'PATCH',
+  path: string,
+  body?: unknown,
+): Promise<{ ok: boolean; data: T | null }> {
   try {
     const res = await fetch(`${BFF}${path}`, {
       method,
@@ -68,9 +78,11 @@ async function apiSend(
       credentials: 'include',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-    return res.ok;
+    if (!res.ok) return { ok: false, data: null };
+    const data = (await res.json().catch(() => null)) as T | null;
+    return { ok: true, data };
   } catch {
-    return false;
+    return { ok: false, data: null };
   }
 }
 
@@ -301,6 +313,7 @@ function mapSchedule(s: ApiScheduleSlot): ScheduleSlot {
     id: s.schedule_id,
     courseId: s.course_id,
     courseName: s.course?.course_name ?? 'Cours',
+    instructorId: s.instructor_id,
     instructorName: s.instructor
       ? `${s.instructor.first_name} ${s.instructor.last_name}`
       : '—',
@@ -413,6 +426,103 @@ export async function fetchAdminSchedule(): Promise<ScheduleSlot[]> {
  * Conflits — GET /api/schedules/conflicts, enrichis avec les salles libres
  * (GET /api/rooms/available) comme suggestions de remplacement.
  */
+/** Campus — GET /api/campus. */
+export async function fetchCampuses(): Promise<{ id: string; name: string }[]> {
+  const campuses = await apiGet<ApiCampus[]>('/campus');
+  return (campuses ?? []).map((c) => ({ id: c.campus_id, name: c.campus_name }));
+}
+
+/** Programmes — GET /api/programs (optionnellement filtrés par campus). */
+export async function fetchPrograms(
+  campusId?: string,
+): Promise<{ id: string; name: string }[]> {
+  const path = campusId
+    ? `/programs?campus_id=${encodeURIComponent(campusId)}`
+    : '/programs';
+  const programs = await apiGet<ApiProgram[]>(path);
+  return (programs ?? []).map((p) => ({ id: p.program_id, name: p.program_name }));
+}
+
+/** Cours — GET /api/courses (optionnellement filtrés par programme). */
+export async function fetchCourses(
+  programId?: string,
+): Promise<{ id: string; code: string; name: string }[]> {
+  const courses = await apiGet<ApiCourse[]>('/courses');
+  if (!courses) return [];
+  const filtered = programId
+    ? courses.filter((c) => c.program?.program_id === programId)
+    : courses;
+  return filtered.map((c) => ({
+    id: c.course_id,
+    code: c.course_code,
+    name: c.course_name,
+  }));
+}
+
+/** Enseignants — GET /api/instructors. */
+export async function fetchInstructors(): Promise<
+  { id: string; name: string }[]
+> {
+  const instructors = await apiGet<ApiInstructor[]>('/instructors');
+  return (instructors ?? []).map((i) => ({
+    id: i.instructor_id,
+    name: `${i.first_name} ${i.last_name}`,
+  }));
+}
+
+/** Met à jour la salle d'un créneau — PUT /api/schedules/:id. */
+export async function updateScheduleRoom(
+  scheduleId: string,
+  roomId: string,
+): Promise<boolean> {
+  return apiSend('PUT', `/schedules/${scheduleId}`, { room_id: roomId });
+}
+
+/** Crée un créneau — POST /api/schedules. */
+export async function createSchedule(payload: {
+  courseId: string;
+  instructorId: string;
+  roomId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}): Promise<boolean> {
+  const year = `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`;
+  return apiSend('POST', '/schedules', {
+    course_id: payload.courseId,
+    instructor_id: payload.instructorId,
+    room_id: payload.roomId,
+    day_of_week: payload.dayOfWeek,
+    start_time: payload.startTime,
+    end_time: payload.endTime,
+    academic_year: year,
+    semester: 1,
+    status: 'planifie',
+  });
+}
+
+/** Met à jour un créneau — PUT /api/schedules/:id. */
+export async function updateSchedule(
+  scheduleId: string,
+  payload: {
+    courseId?: string;
+    instructorId?: string;
+    roomId?: string;
+    dayOfWeek?: number;
+    startTime?: string;
+    endTime?: string;
+  },
+): Promise<boolean> {
+  return apiSend('PUT', `/schedules/${scheduleId}`, {
+    ...(payload.courseId ? { course_id: payload.courseId } : {}),
+    ...(payload.instructorId ? { instructor_id: payload.instructorId } : {}),
+    ...(payload.roomId ? { room_id: payload.roomId } : {}),
+    ...(payload.dayOfWeek ? { day_of_week: payload.dayOfWeek } : {}),
+    ...(payload.startTime ? { start_time: payload.startTime } : {}),
+    ...(payload.endTime ? { end_time: payload.endTime } : {}),
+  });
+}
+
 export async function fetchConflicts(): Promise<ScheduleConflict[]> {
   const conflicts = await apiGet<ApiScheduleConflict[]>('/schedules/conflicts');
   if (!conflicts) return [];
@@ -869,7 +979,7 @@ export async function saveAdminStudent(
   },
   mode: 'create' | 'edit',
   id?: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; id?: string }> {
   const status =
     payload.status === 'DIPLOME'
       ? 'diplome'
@@ -884,7 +994,7 @@ export async function saveAdminStudent(
       email: payload.email,
       status,
     });
-    return { ok };
+    return { ok, id };
   }
 
   const campuses = await apiGet<ApiCampus[]>('/campus');
@@ -903,7 +1013,7 @@ export async function saveAdminStudent(
     ) ?? programs?.[0];
   if (!program) return { ok: false };
 
-  const ok = await apiSend('POST', '/students', {
+  const result = await apiSendJson<ApiStudent>('POST', '/students', {
     campus_id: campus.campus_id,
     program_id: program.program_id,
     first_name: payload.firstName,
@@ -913,23 +1023,64 @@ export async function saveAdminStudent(
     payment_status: 'a_jour',
     status,
   });
-  return { ok };
+  return { ok: result.ok, id: result.data?.student_id };
 }
 
-/** Vue synthétique administration — GET /api/students. */
+/** Inscriptions aux cours — POST /api/enrollments (une par cours). */
+export async function createEnrollments(
+  studentId: string,
+  courseIds: string[],
+): Promise<{ ok: boolean; created: number }> {
+  if (courseIds.length === 0) return { ok: true, created: 0 };
+  const year = `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`;
+  let created = 0;
+  await Promise.all(
+    courseIds.map(async (courseId) => {
+      const ok = await apiSend('POST', '/enrollments', {
+        student_id: studentId,
+        course_id: courseId,
+        academic_year: year,
+        semester: 1,
+        enrollment_date: new Date().toISOString().slice(0, 10),
+        status: 'inscrit',
+      });
+      if (ok) created += 1;
+    }),
+  );
+  return { ok: created === courseIds.length, created };
+}
+
+/** Vue synthétique administration — GET /api/students + relances via /paiements/en-retard. */
 export async function fetchDashboardStudents(): Promise<DashboardStudent[]> {
-  const students = await apiGet<ApiStudent[]>('/students');
+  const [students, overdue] = await Promise.all([
+    apiGet<ApiStudent[]>('/students'),
+    apiGet<ApiPaiement[]>('/paiements/en-retard'),
+  ]);
   if (!students) return [];
-  return students.map((s) => ({
-    id: s.student_id,
-    name: `${s.first_name} ${s.last_name}`,
-    email: s.email,
-    campus: s.campus?.campus_name ?? '—',
-    filiere: s.program?.program_name ?? '—',
-    promotion: s.enrollment_year ? String(s.enrollment_year) : '—',
-    paymentStatus: mapPaymentStatus(s.payment_status),
-    reminders: 0,
-  }));
+
+  const remindersByStudent = new Map<string, number>();
+  for (const p of overdue ?? []) {
+    remindersByStudent.set(
+      p.studentId,
+      Math.max(remindersByStudent.get(p.studentId) ?? 0, p.relances?.length ?? 1),
+    );
+  }
+
+  return students.map((s) => {
+    const reminders = remindersByStudent.get(s.student_id) ?? 0;
+    const paymentStatus =
+      reminders > 0 ? 'OVERDUE' : mapPaymentStatus(s.payment_status);
+    return {
+      id: s.student_id,
+      name: `${s.first_name} ${s.last_name}`,
+      email: s.email,
+      campus: s.campus?.campus_name ?? '—',
+      filiere: s.program?.program_name ?? '—',
+      promotion: s.enrollment_year ? String(s.enrollment_year) : '—',
+      paymentStatus,
+      reminders,
+    };
+  });
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────

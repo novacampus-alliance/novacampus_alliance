@@ -11,6 +11,7 @@ export interface ScheduleSlot {
   id: string;
   courseId: string;
   courseName: string;
+  instructorId?: string;
   instructorName: string;
   roomId: string;
   roomName: string;

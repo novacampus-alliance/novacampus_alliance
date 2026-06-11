@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
 import { Card, StatusPill } from '@/components/ui';
-import { fetchConflicts } from '@/lib/api';
+import { fetchConflicts, updateScheduleRoom } from '@/lib/api';
 import { formatDate, formatTime } from '@/lib/format';
 import type { ScheduleConflict } from '@/lib/types';
 
@@ -17,14 +17,25 @@ export default function AdminConflictsPage() {
     fetchConflicts().then(setConflicts);
   }, []);
 
-  function assignRoom(conflictId: string, roomName: string) {
+  async function assignRoom(
+    conflictId: string,
+    scheduleId: string,
+    roomId: string,
+    roomName: string,
+  ) {
+    const ok = await updateScheduleRoom(scheduleId, roomId);
+    if (!ok) {
+      setToast('Erreur lors de l\'attribution de la salle.');
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
     setResolved((prev) => {
       const next = new Set<string>();
       prev.forEach((id) => next.add(id));
       next.add(conflictId);
       return next;
     });
-    setToast(`Salle ${roomName} attribuee. Conflit resolu.`);
+    setToast(`Salle ${roomName} attribuée. Conflit résolu.`);
     setTimeout(() => setToast(null), 3000);
   }
 
@@ -89,7 +100,7 @@ export default function AdminConflictsPage() {
                       {c.suggestedRooms.map((r) => (
                         <button
                           key={r.roomId}
-                          onClick={() => assignRoom(c.id, r.roomName)}
+                          onClick={() => assignRoom(c.id, c.slots[0].id, r.roomId, r.roomName)}
                           aria-label={`Attribuer la salle ${r.roomName}`}
                           className="rounded-md border border-gray-500 bg-white px-2 py-1.5 text-xs font-medium hover:border-amber-700 hover:bg-brand-50"
                         >

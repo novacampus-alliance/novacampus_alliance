@@ -63,9 +63,10 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  function sendAll() {
+  async function sendAll() {
+    await Promise.all(alerts.map((a) => triggerReminder(a.id)));
     setSentAll(true);
-    setToast(`${alerts.length} relances envoyees.`);
+    setToast(`${alerts.length} relance(s) envoyée(s).`);
     setTimeout(() => setToast(null), 3000);
   }
 
@@ -109,14 +110,26 @@ export default function AdminDashboardPage() {
           </span>
         </div>
         <p className="text-xs leading-relaxed text-zinc-300">
-          {alerts.length} relances personnalisees pretes. Hugo Simon (45j de
-          retard) → escalade vers contentieux recommandee.
+          {alerts.length === 0
+            ? 'Aucune relance en attente.'
+            : `${alerts.length} relance(s) personnalisée(s) prête(s).${
+                alerts[0]
+                  ? ` Priorité : ${alerts[0].studentName} (${formatEUR(alerts[0].amount)}).`
+                  : ''
+              }`}
         </p>
         <div className="mt-3 flex gap-2">
-          <button className="rounded-md border border-zinc-500 px-3 py-2 text-xs font-semibold text-zinc-100 hover:bg-zinc-800">
-            Voir les brouillons
-          </button>
-          <button className="rounded-md border border-zinc-500 px-3 py-2 text-xs font-semibold text-zinc-100 hover:bg-zinc-800">
+          <Link
+            href="/admin/paiements"
+            className="rounded-md border border-zinc-500 px-3 py-2 text-xs font-semibold text-zinc-100 hover:bg-zinc-800"
+          >
+            Voir les paiements
+          </Link>
+          <button
+            onClick={sendAll}
+            disabled={sentAll || alerts.length === 0}
+            className="rounded-md border border-zinc-500 px-3 py-2 text-xs font-semibold text-zinc-100 hover:bg-zinc-800 disabled:opacity-50"
+          >
             Tout approuver
           </button>
         </div>

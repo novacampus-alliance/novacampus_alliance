@@ -4,18 +4,33 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button, Card } from '@/components/ui';
 import { WeekCalendar } from '@/components/week-calendar';
-import { fetchAdminSchedule, fetchConflicts } from '@/lib/api';
+import {
+  createSchedule,
+  fetchAdminSchedule,
+  fetchConflicts,
+  fetchCourses,
+  fetchInstructors,
+  fetchRooms,
+  updateSchedule,
+  updateScheduleRoom,
+} from '@/lib/api';
 import { formatDate, formatTime } from '@/lib/format';
 import type { ScheduleConflict, ScheduleSlot } from '@/lib/types';
 
 type SlotDraft = {
-  courseName: string;
-  instructorName: string;
-  roomName: string;
-  campus: string;
+  courseId: string;
+  instructorId: string;
+  roomId: string;
   startsAt: string;
   endsAt: string;
 };
+
+function isoToScheduleFields(iso: string): { dayOfWeek: number; time: string } {
+  const d = new Date(iso);
+  const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return { dayOfWeek, time };
+}
 
 export default function AdminPlanningsPage() {
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
@@ -26,9 +41,17 @@ export default function AdminPlanningsPage() {
   const [resolved, setResolved] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<string | null>(null);
 
+  async function reload() {
+    const [nextSlots, nextConflicts] = await Promise.all([
+      fetchAdminSchedule(),
+      fetchConflicts(),
+    ]);
+    setSlots(nextSlots);
+    setConflicts(nextConflicts);
+  }
+
   useEffect(() => {
-    fetchAdminSchedule().then(setSlots);
-    fetchConflicts().then(setConflicts);
+    reload();
   }, []);
 
   const campuses = useMemo(() => {
@@ -42,47 +65,57 @@ export default function AdminPlanningsPage() {
     [slots, campus],
   );
 
-  function assignRoom(conflictId: string, roomName: string) {
+  async function assignRoom(
+    conflictId: string,
+    scheduleId: string,
+    roomId: string,
+    roomName: string,
+  ) {
+    const ok = await updateScheduleRoom(scheduleId, roomId);
+    if (!ok) {
+      setConfirm('Erreur lors de l\'attribution de la salle.');
+      setTimeout(() => setConfirm(null), 3000);
+      return;
+    }
     setResolved((prev) => new Set(prev).add(conflictId));
-    setConfirm(`Salle ${roomName} attribuee. Conflit resolu.`);
+    setConfirm(`Salle ${roomName} attribuée. Conflit résolu.`);
     setTimeout(() => setConfirm(null), 3000);
+    await reload();
   }
 
-  function handleSaveSlot(draft: SlotDraft, slotId?: string) {
-    setSlots((prev) => {
-      if (slotId) {
-        return prev.map((s) =>
-          s.id === slotId
-            ? {
-                ...s,
-                courseName: draft.courseName,
-                instructorName: draft.instructorName,
-                roomName: draft.roomName,
-                roomId: draft.roomName.toLowerCase().replace(/\s+/g, '-'),
-                campus: draft.campus,
-                startsAt: draft.startsAt,
-                endsAt: draft.endsAt,
-              }
-            : s,
-        );
-      }
-      const newSlot: ScheduleSlot = {
-        id: `local-${Date.now()}`,
-        courseId: 'local',
-        courseName: draft.courseName,
-        instructorName: draft.instructorName,
-        roomId: draft.roomName.toLowerCase().replace(/\s+/g, '-'),
-        roomName: draft.roomName,
-        campus: draft.campus,
-        startsAt: draft.startsAt,
-        endsAt: draft.endsAt,
-      };
-      return [...prev, newSlot];
-    });
-    setConfirm(slotId ? 'Creneau mis a jour.' : 'Nouveau creneau cree.');
+  async function handleSaveSlot(draft: SlotDraft, slotId?: string) {
+    const start = isoToScheduleFields(draft.startsAt);
+    const end = isoToScheduleFields(draft.endsAt);
+
+    const ok = slotId
+      ? await updateSchedule(slotId, {
+          courseId: draft.courseId,
+          instructorId: draft.instructorId,
+          roomId: draft.roomId,
+          dayOfWeek: start.dayOfWeek,
+          startTime: start.time,
+          endTime: end.time,
+        })
+      : await createSchedule({
+          courseId: draft.courseId,
+          instructorId: draft.instructorId,
+          roomId: draft.roomId,
+          dayOfWeek: start.dayOfWeek,
+          startTime: start.time,
+          endTime: end.time,
+        });
+
+    if (!ok) {
+      setConfirm('Erreur lors de l\'enregistrement du créneau.');
+      setTimeout(() => setConfirm(null), 3000);
+      return;
+    }
+
+    setConfirm(slotId ? 'Créneau mis à jour.' : 'Nouveau créneau créé.');
     setTimeout(() => setConfirm(null), 3000);
     setEditing(null);
     setCreating(false);
+    await reload();
   }
 
   return (
@@ -173,7 +206,7 @@ export default function AdminPlanningsPage() {
                           {c.suggestedRooms.map((r) => (
                             <button
                               key={r.roomId}
-                              onClick={() => assignRoom(c.id, r.roomName)}
+                              onClick={() => assignRoom(c.id, c.slots[0].id, r.roomId, r.roomName)}
                               aria-label={`Attribuer la salle ${r.roomName}`}
                               className="rounded-md border border-gray-500 bg-white px-2 py-1.5 text-xs font-medium hover:border-amber-700 hover:bg-brand-50"
                             >
@@ -269,47 +302,53 @@ function SlotDialog({
   onSave: (draft: SlotDraft) => void;
   onClose: () => void;
 }) {
+  const [courses, setCourses] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [instructors, setInstructors] = useState<{ id: string; name: string }[]>([]);
+  const [rooms, setRooms] = useState<{ id: string; name: string; campus: string }[]>([]);
   const [draft, setDraft] = useState<SlotDraft>({
-    courseName: slot?.courseName ?? '',
-    instructorName: slot?.instructorName ?? '',
-    roomName: slot?.roomName ?? '',
-    campus: slot?.campus ?? 'Paris',
+    courseId: slot?.courseId ?? '',
+    instructorId: slot?.instructorId ?? '',
+    roomId: slot?.roomId ?? '',
     startsAt: slot?.startsAt.slice(0, 16) ?? '',
     endsAt: slot?.endsAt.slice(0, 16) ?? '',
   });
+
+  useEffect(() => {
+    fetchCourses().then(setCourses);
+    fetchInstructors().then(setInstructors);
+    fetchRooms().then((r) =>
+      setRooms(r.map((room) => ({ id: room.id, name: room.name, campus: room.campus }))),
+    );
+  }, []);
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
         <h3 className="mb-3 text-base font-semibold">
-          {slot ? 'Editer le creneau' : 'Nouveau creneau'}
+          {slot ? 'Éditer le créneau' : 'Nouveau créneau'}
         </h3>
         <div className="grid gap-3">
-          <Input
+          <SelectField
             label="Cours"
-            value={draft.courseName}
-            onChange={(v) => setDraft({ ...draft, courseName: v })}
+            value={draft.courseId}
+            onChange={(v) => setDraft({ ...draft, courseId: v })}
+            options={courses.map((c) => ({ value: c.id, label: `${c.code} — ${c.name}` }))}
           />
-          <Input
+          <SelectField
             label="Enseignant"
-            value={draft.instructorName}
-            onChange={(v) => setDraft({ ...draft, instructorName: v })}
+            value={draft.instructorId}
+            onChange={(v) => setDraft({ ...draft, instructorId: v })}
+            options={instructors.map((i) => ({ value: i.id, label: i.name }))}
+          />
+          <SelectField
+            label="Salle"
+            value={draft.roomId}
+            onChange={(v) => setDraft({ ...draft, roomId: v })}
+            options={rooms.map((r) => ({ value: r.id, label: `${r.name} (${r.campus})` }))}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Salle"
-              value={draft.roomName}
-              onChange={(v) => setDraft({ ...draft, roomName: v })}
-            />
-            <Input
-              label="Campus"
-              value={draft.campus}
-              onChange={(v) => setDraft({ ...draft, campus: v })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Debut"
+              label="Début"
               type="datetime-local"
               value={draft.startsAt}
               onChange={(v) => setDraft({ ...draft, startsAt: v })}
@@ -330,6 +369,38 @@ function SlotDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-600">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full min-h-11 rounded-md border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
+      >
+        <option value="">— Sélectionner —</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
