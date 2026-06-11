@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
@@ -180,7 +180,7 @@ function AiPanel({
   );
 }
 
-export default function AdminConflictsPage() {
+function AdminConflictsContent() {
   const searchParams = useSearchParams();
   const [conflicts, setConflicts] = useState<ScheduleConflict[]>([]);
   const [loading, setLoading] = useState(true);
@@ -456,5 +456,13 @@ export default function AdminConflictsPage() {
         </Link>
       </p>
     </AppShell>
+  );
+}
+
+export default function AdminConflictsPage() {
+  return (
+    <Suspense>
+      <AdminConflictsContent />
+    </Suspense>
   );
 }
