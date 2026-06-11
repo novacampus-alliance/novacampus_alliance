@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, type IconName } from '@/components/icons';
-import { fetchNotifications } from '@/lib/api';
+import { fetchNotifications, markNotificationRead } from '@/lib/api';
 import { formatDate, formatTime } from '@/lib/format';
 import type { UserRole } from '@/lib/auth';
 import type { AppNotification, NotificationKind } from '@/lib/types';
@@ -95,7 +95,8 @@ export function NotificationsBell({ role }: { role: UserRole }) {
   const unread = items.filter((n) => !n.read).length;
 
   function markRead(id: string) {
-    persistReadIds([id]);
+    persistReadIds([id]);    // Endpoint déclaré PUT /api/notifications/:id/lire (sans effet sur les mocks).
+    void markNotificationRead(id);
     setItems((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
     );
@@ -111,6 +112,7 @@ export function NotificationsBell({ role }: { role: UserRole }) {
 
   function markAllRead() {
     persistReadIds(items.map((n) => n.id));
+    items.filter((n) => !n.read).forEach((n) => void markNotificationRead(n.id));
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 

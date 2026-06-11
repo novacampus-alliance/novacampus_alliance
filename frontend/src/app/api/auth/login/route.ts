@@ -7,7 +7,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ACCESS_TOKEN_COOKIE, ROLE_HOME_PATH, UserRole } from '@/lib/auth';
+import {
+  ACCESS_TOKEN_COOKIE,
+  ROLE_HOME_PATH,
+  USER_ROLE_COOKIE,
+  UserRole,
+} from '@/lib/auth';
 
 const API_URL = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -60,6 +65,16 @@ export async function POST(request: NextRequest) {
     sameSite: 'lax', // Protection CSRF basique
     path: '/',
     maxAge: 60 * 60 * 24 * 7, // 7 jours en secondes
+  });
+
+  // 5. Cookie non sensible lisible par l'UI (ex : bascule de portail en DEMO).
+  // Le contrôle d'accès réel reste basé sur le JWT httpOnly ci-dessus.
+  response.cookies.set(USER_ROLE_COOKIE, role, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 7,
   });
 
   return response;

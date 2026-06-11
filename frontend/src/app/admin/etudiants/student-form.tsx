@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui';
+import { saveAdminStudent } from '@/lib/api';
 import type { AdminStudent } from '@/lib/types';
 
 interface Props {
@@ -44,32 +45,15 @@ export function StudentForm({ initial, mode }: Props) {
     setSaving(true);
     setConfirm(null);
 
-    const payload = {
-      firstName,
-      lastName,
-      email,
-      campus,
-      program,
-      status,
-      enrollments: selectedCourses,
-    };
-
     try {
-      const url =
-        mode === 'create'
-          ? '/api/students'
-          : `/api/students/${initial?.id}`;
-      const method = mode === 'create' ? 'POST' : 'PATCH';
-      try {
-        await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-      } catch {
-        /* on continue meme si le backend n'est pas dispo */
-      }
+      // POST /api/students ou PUT /api/students/:id (endpoints déclarés),
+      // via le client api.ts qui résout campus_id/program_id par nom.
+      // Les inscriptions cochées restent une démo UI (cours mocks).
+      await saveAdminStudent(
+        { firstName, lastName, email, campus, program, status },
+        mode,
+        initial?.id,
+      );
       setConfirm(
         mode === 'create'
           ? 'Fiche etudiant creee avec succes.'

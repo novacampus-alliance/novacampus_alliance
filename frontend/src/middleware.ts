@@ -23,6 +23,7 @@ const PUBLIC_PATHS = ['/', '/login', '/unauthorized'];
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
   if (pathname.startsWith('/api/auth')) return true; // routes login/logout
+  if (pathname.startsWith('/bff')) return true; // proxy API (auth gérée par cookie + gateway)
   if (pathname.startsWith('/_next')) return true; // fichiers internes Next.js
   if (pathname.includes('.')) return true; // images, CSS, etc.
   return false;

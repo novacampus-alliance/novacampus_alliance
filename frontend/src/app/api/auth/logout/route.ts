@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ACCESS_TOKEN_COOKIE } from '@/lib/auth';
+import { ACCESS_TOKEN_COOKIE, USER_ROLE_COOKIE } from '@/lib/auth';
 
 const API_URL = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -25,5 +25,6 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({ message: 'Deconnexion reussie' });
   response.cookies.delete(ACCESS_TOKEN_COOKIE);
+  response.cookies.delete(USER_ROLE_COOKIE);
   return response;
 }
