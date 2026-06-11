@@ -190,22 +190,36 @@ async function seedPostgres() {
   }
   console.log(`  ✅ Salles: ${totalRooms}`);
 
-  // ── Enseignants ──
+  // ── Enseignants + comptes User associés ──
   const instructorsByCampus = new Map<string, any[]>();
   let totalInstructors = 0;
+  const hashedInstructor = await bcrypt.hash('Enseignant1234!', 10);
+  const usedInstructorEmails = new Set<string>();
+  let firstTestInstructor: { email: string; campus: string } | null = null;
+
   for (const campus of campuses) {
     const n = int(CONFIG.INSTRUCTORS_PER_CAMPUS);
     const instructors = [];
     for (let i = 0; i < n; i++) {
-      const deptInfo = faker.helpers.arrayElement(DEPARTEMENTS);
+      const deptInfo  = faker.helpers.arrayElement(DEPARTEMENTS);
       const firstName = faker.person.firstName();
       const lastName  = faker.person.lastName();
+
+      // Garantit l'unicité de l'email enseignant
+      let email: string;
+      do {
+        email = faker.internet
+          .email({ firstName, lastName, provider: 'novacampus.fr' })
+          .toLowerCase();
+      } while (usedInstructorEmails.has(email));
+      usedInstructorEmails.add(email);
+
       const instructor = await prisma.instructor.create({
         data: {
           campus_id:      campus.campus_id,
           first_name:     firstName,
           last_name:      lastName,
-          email:          faker.internet.email({ firstName, lastName, provider: 'novacampus.fr' }).toLowerCase(),
+          email,
           phone:          faker.phone.number(),
           department:     deptInfo.dept,
           specialization: faker.helpers.arrayElement(deptInfo.specialites),
@@ -213,12 +227,30 @@ async function seedPostgres() {
           status:         'actif',
         },
       });
+
+      // Compte User lié à l'enseignant (même pattern que les étudiants)
+      await prisma.user.create({
+        data: {
+          email,
+          password_hash: hashedInstructor,
+          role:          Role.INSTRUCTOR,
+          first_name:    firstName,
+          last_name:     lastName,
+          campus_id:     campus.campus_id,
+          is_active:     true,
+        },
+      });
+
       instructors.push({ ...instructor, _dept: deptInfo.dept });
       totalInstructors++;
+
+      if (!firstTestInstructor) {
+        firstTestInstructor = { email, campus: campus.campus_name };
+      }
     }
     instructorsByCampus.set(campus.campus_id, instructors);
   }
-  console.log(`  ✅ Enseignants: ${totalInstructors}`);
+  console.log(`  ✅ Enseignants: ${totalInstructors} (+ ${totalInstructors} comptes users INSTRUCTOR)`);
 
   // ── Cours ──
   const coursesByProgram = new Map<string, any[]>();
@@ -464,7 +496,7 @@ async function seedPostgres() {
   console.log(`  ✅ Relances (Postgres): ${totalRelances}`);
   console.log(`  ✅ Inscriptions: ${totalEnrollments}`);
 
-  return firstTestStudent;
+  return { testStudent: firstTestStudent, testInstructor: firstTestInstructor };
 }
 
 // ─── SEED MONGODB ────────────────────────────────────────────────────────────
@@ -559,17 +591,23 @@ async function main() {
     await prisma.campus.deleteMany({});
     console.log('  ✅ Tables purgées');
 
-    const testStudent = await seedPostgres();
+    const { testStudent, testInstructor } = await seedPostgres();
     await seedMongo();
 
     console.log('\n✅ Seed terminée avec succès !');
     console.log('\n📋 Comptes de test :');
-    console.log('   admin@novacampus.fr     / Admin1234!     (ADMIN)');
-    console.log('   direction@novacampus.fr / Admin1234!     (DIRECTION)');
+    console.log('   admin@novacampus.fr     / Admin1234!      (ADMIN)');
+    console.log('   direction@novacampus.fr / Admin1234!      (DIRECTION)');
+    console.log('   demo@novacampus.fr      / Demo1234!       (DEMO)');
     if (testStudent) {
-      console.log(`   ${testStudent.email} / Etudiant1234!  (STUDENT, paiement: ${testStudent.statut})`);
+      console.log(`   ${testStudent.email.padEnd(38)} / Etudiant1234!   (STUDENT, paiement: ${testStudent.statut})`);
     }
-    console.log('   (tous les étudiants ont le mot de passe Etudiant1234!)');
+    if (testInstructor) {
+      console.log(`   ${testInstructor.email.padEnd(38)} / Enseignant1234! (INSTRUCTOR, campus: ${testInstructor.campus})`);
+    }
+    console.log('\n   Mots de passe communs par rôle :');
+    console.log('   → Tous les étudiants   : Etudiant1234!');
+    console.log('   → Tous les enseignants : Enseignant1234!');
   } catch (err) {
     console.error('\n❌ Erreur seed :', err);
     process.exit(1);
