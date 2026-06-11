@@ -273,17 +273,16 @@ function AdminConflictsContent() {
   const campusList = useMemo(() => {
     const names = new Set<string>();
     for (const c of conflicts) {
-      const name = c.slots[0]?.campus;
-      if (name) names.add(name);
+      if (c.campusName && c.campusName !== '—') names.add(c.campusName);
     }
     return Array.from(names).sort();
   }, [conflicts]);
 
-  const byCampus = useMemo(() => {
+  const countByCampus = useMemo(() => {
     const map = new Map<string, number>();
     for (const c of conflicts) {
       if (resolved.has(c.id)) continue;
-      const name = c.slots[0]?.campus || 'Campus inconnu';
+      const name = c.campusName || 'Campus inconnu';
       map.set(name, (map.get(name) ?? 0) + 1);
     }
     return map;
@@ -292,7 +291,7 @@ function AdminConflictsContent() {
   const open = conflicts.filter(
     (c) =>
       !resolved.has(c.id) &&
-      (campusFilter === 'ALL' || c.slots[0]?.campus === campusFilter),
+      (campusFilter === 'ALL' || c.campusName === campusFilter),
   );
 
   return (
@@ -310,43 +309,23 @@ function AdminConflictsContent() {
         </div>
       )}
 
-      {/* Répartition par campus */}
+      {/* Filtre campus */}
       {!loading && campusList.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            onClick={() => setCampusFilter('ALL')}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              campusFilter === 'ALL'
-                ? 'border-amber-400 bg-amber-100 text-amber-900'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-            }`}
+        <div className="mb-4 flex items-center gap-3">
+          <select
+            value={campusFilter}
+            onChange={(e) => setCampusFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:border-amber-400 focus:outline-none"
           >
-            Tous les campus
-            <span className="ml-1.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
-              {Array.from(byCampus.values()).reduce((a, b) => a + b, 0)}
-            </span>
-          </button>
-          {campusList.map((name) => {
-            const count = byCampus.get(name) ?? 0;
-            return (
-              <button
-                key={name}
-                onClick={() => setCampusFilter(name)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  campusFilter === name
-                    ? 'border-red-400 bg-red-100 text-red-900'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {name}
-                {count > 0 && (
-                  <span className="ml-1.5 rounded-full bg-red-200 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+            <option value="ALL">
+              Tous les campus ({Array.from(countByCampus.values()).reduce((a, b) => a + b, 0)})
+            </option>
+            {campusList.map((name) => (
+              <option key={name} value={name}>
+                {name} ({countByCampus.get(name) ?? 0})
+              </option>
+            ))}
+          </select>
         </div>
       )}
 

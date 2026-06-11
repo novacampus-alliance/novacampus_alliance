@@ -36,7 +36,7 @@ function ConflictsBanner({ conflicts }: { conflicts: ScheduleConflict[] }) {
   const byCampus = useMemo(() => {
     const map = new Map<string, number>();
     for (const c of conflicts) {
-      const name = c.slots[0]?.campus || 'Campus inconnu';
+      const name = c.campusName || 'Campus inconnu';
       map.set(name, (map.get(name) ?? 0) + 1);
     }
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);

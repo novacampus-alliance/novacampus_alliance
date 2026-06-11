@@ -548,14 +548,22 @@ export async function updateSchedule(
 }
 
 export async function fetchConflicts(): Promise<ScheduleConflict[]> {
-  const conflicts = await apiGet<ApiScheduleConflict[]>('/schedules/conflicts');
+  const [conflicts, campusList] = await Promise.all([
+    apiGet<ApiScheduleConflict[]>('/schedules/conflicts'),
+    apiGet<ApiCampus[]>('/campus'),
+  ]);
   if (!conflicts) return [];
+
+  const campusNameById = new Map<string, string>(
+    (campusList ?? []).map((c) => [c.campus_id, c.campus_name]),
+  );
 
   return Promise.all(
     conflicts.map(async (c) => {
       const a = c.schedule_a;
       let suggestedRooms: ScheduleConflict['suggestedRooms'] = [];
-      const campusId = a.room?.campus_id;
+      const campusId = a.room?.campus_id ?? '';
+      const campusName = campusNameById.get(campusId) ?? a.room?.building ?? '—';
       if (campusId) {
         const query = new URLSearchParams({
           campus_id: campusId,
@@ -575,7 +583,8 @@ export async function fetchConflicts(): Promise<ScheduleConflict[]> {
         severity: 'CRITICAL' as const,
         reason: c.reason,
         conflictType: (c.type ?? 'room') as 'room' | 'instructor',
-        campusId: a.room?.campus_id ?? '',
+        campusId,
+        campusName,
         slots: [mapSchedule(a), mapSchedule(c.schedule_b)],
         suggestedRooms,
       };
