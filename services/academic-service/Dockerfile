@@ -23,9 +23,7 @@ ENV NODE_ENV=production
 COPY --from=builder /app/academic-service/node_modules ./node_modules
 COPY --from=builder /app/academic-service/dist ./dist
 COPY --from=builder /app/prisma ../prisma/
-COPY services/academic-service/docker-entrypoint.sh ./docker-entrypoint.sh
-
-RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
+COPY --chmod=755 services/academic-service/docker-entrypoint.sh ./docker-entrypoint.sh
 
 EXPOSE 3002
 
