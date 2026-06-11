@@ -40,6 +40,12 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ user: JwtPayload }>();
     const user = request.user;
 
+    // Le rôle DEMO est un passe-partout de démonstration : il accède à
+    // toutes les routes, quel que soit le @Roles() exigé.
+    if (user?.role === Role.DEMO) {
+      return true;
+    }
+
     if (!user || !requiredRoles.includes(user.role)) {
       throw new ForbiddenException('Acces refuse pour ce role');
     }

@@ -256,6 +256,7 @@ enum Role {
   INSTRUCTOR
   ADMIN
   DIRECTION
+  DEMO
 }
 
 model User {
