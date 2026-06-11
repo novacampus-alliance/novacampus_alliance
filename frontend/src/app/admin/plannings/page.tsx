@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button, Card } from '@/components/ui';
 import { WeekCalendar } from '@/components/week-calendar';
+import Link from 'next/link';
 import {
   createSchedule,
   fetchAdminSchedule,
@@ -12,7 +13,6 @@ import {
   fetchInstructors,
   fetchRooms,
   updateSchedule,
-  updateScheduleRoom,
 } from '@/lib/api';
 import { formatDate, formatTime } from '@/lib/format';
 import type { ScheduleConflict, ScheduleSlot } from '@/lib/types';
@@ -38,7 +38,6 @@ export default function AdminPlanningsPage() {
   const [campus, setCampus] = useState<string>('ALL');
   const [editing, setEditing] = useState<ScheduleSlot | null>(null);
   const [creating, setCreating] = useState(false);
-  const [resolved, setResolved] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<string | null>(null);
 
   async function reload() {
@@ -64,24 +63,6 @@ export default function AdminPlanningsPage() {
     () => slots.filter((s) => campus === 'ALL' || s.campus === campus),
     [slots, campus],
   );
-
-  async function assignRoom(
-    conflictId: string,
-    scheduleId: string,
-    roomId: string,
-    roomName: string,
-  ) {
-    const ok = await updateScheduleRoom(scheduleId, roomId);
-    if (!ok) {
-      setConfirm('Erreur lors de l\'attribution de la salle.');
-      setTimeout(() => setConfirm(null), 3000);
-      return;
-    }
-    setResolved((prev) => new Set(prev).add(conflictId));
-    setConfirm(`Salle ${roomName} attribuée. Conflit résolu.`);
-    setTimeout(() => setConfirm(null), 3000);
-    await reload();
-  }
 
   async function handleSaveSlot(draft: SlotDraft, slotId?: string) {
     const start = isoToScheduleFields(draft.startsAt);
@@ -148,81 +129,19 @@ export default function AdminPlanningsPage() {
         </p>
       )}
 
-      <section className="mb-6">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">
-          Conflits detectes
-        </h3>
-        {conflicts.length === 0 ? (
-          <p className="text-sm text-gray-600">Aucun conflit detecte.</p>
-        ) : (
-          <div className="space-y-3">
-            {conflicts.map((c) => {
-              const isResolved = resolved.has(c.id);
-              return (
-                <article
-                  key={c.id}
-                  className={`rounded-lg border p-4 ${
-                    isResolved
-                      ? 'border-emerald-200 bg-emerald-50'
-                      : c.severity === 'CRITICAL'
-                        ? 'border-red-200 bg-red-50'
-                        : 'border-amber-200 bg-amber-50'
-                  }`}
-                >
-                  <header className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold">
-                        {isResolved ? 'Conflit resolu' : c.reason}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        Severite : {c.severity}
-                      </div>
-                    </div>
-                    {isResolved && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] uppercase tracking-wide text-emerald-800">
-                        Resolu
-                      </span>
-                    )}
-                  </header>
-                  {!isResolved && (
-                    <>
-                      <ul className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
-                        {c.slots.map((s) => (
-                          <li
-                            key={s.id}
-                            className="rounded border bg-white px-2 py-1"
-                          >
-                            {s.courseName} · {formatDate(s.startsAt)}{' '}
-                            {formatTime(s.startsAt)} — Salle {s.roomName} ·{' '}
-                            {s.campus}
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="mt-3">
-                        <div className="text-xs font-medium text-gray-700">
-                          Suggestions de salles :
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {c.suggestedRooms.map((r) => (
-                            <button
-                              key={r.roomId}
-                              onClick={() => assignRoom(c.id, c.slots[0].id, r.roomId, r.roomName)}
-                              aria-label={`Attribuer la salle ${r.roomName}`}
-                              className="rounded-md border border-gray-500 bg-white px-2 py-1.5 text-xs font-medium hover:border-amber-700 hover:bg-brand-50"
-                            >
-                              {r.roomName} · cap. {r.capacity}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      {conflicts.length > 0 && (
+        <Link
+          href="/admin/conflits"
+          className="mb-6 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 hover:bg-red-100 transition-colors"
+        >
+          <span className="text-sm font-medium text-red-800">
+            ⚠ {conflicts.length} conflit{conflicts.length > 1 ? 's' : ''} détecté{conflicts.length > 1 ? 's' : ''} — résoudre avec l&apos;agent M7
+          </span>
+          <span className="text-xs font-semibold text-red-700 underline underline-offset-2">
+            Voir les conflits →
+          </span>
+        </Link>
+      )}
 
       <section className="mb-4">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">
