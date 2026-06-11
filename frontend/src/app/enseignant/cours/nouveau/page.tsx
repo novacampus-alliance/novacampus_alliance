@@ -5,7 +5,7 @@ import { CourseForm } from '../course-form';
 
 export default function NewCoursePage() {
   return (
-    <AppShell title="Nouveau cours" subtitle="Creer un cours">
+    <AppShell title="Nouveau cours" subtitle="Créer un cours">
       <div className="mb-4">
         <Link
           href="/enseignant/cours"

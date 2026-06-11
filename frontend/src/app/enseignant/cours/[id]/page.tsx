@@ -31,7 +31,7 @@ export default function TeacherCourseDetailPage() {
   if (course === undefined) {
     return (
       <AppShell title="Cours">
-        <p className="text-sm text-gray-600">Chargement...</p>
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       </AppShell>
     );
   }
@@ -40,6 +40,12 @@ export default function TeacherCourseDetailPage() {
     return (
       <AppShell title="Cours">
         <p className="text-sm text-gray-600">Cours introuvable.</p>
+        <Link
+          href="/enseignant/cours"
+          className="mt-3 inline-block text-sm text-amber-900 underline underline-offset-2"
+        >
+          ← Mes cours
+        </Link>
       </AppShell>
     );
   }
@@ -54,14 +60,11 @@ export default function TeacherCourseDetailPage() {
           ← Mes cours
         </Link>
         <div className="flex flex-wrap gap-2">
-          <ButtonLink
-            variant="secondary"
-            href={`/enseignant/cours/${course.id}/modifier`}
-          >
+          <ButtonLink variant="secondary" href={`/enseignant/cours/${course.id}/modifier`}>
             Modifier le cours
           </ButtonLink>
           <ButtonLink href={`/enseignant/cours/${course.id}/notes`}>
-            <Icon name="notes" className="h-4 w-4" /> Saisir notes & presence
+            <Icon name="notes" className="h-4 w-4" /> Saisir notes & présence
           </ButtonLink>
         </div>
       </div>
@@ -69,7 +72,7 @@ export default function TeacherCourseDetailPage() {
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
         <StatCard label="Inscrits" value={String(course.enrolledCount)} />
         <StatCard
-          label="Taux de reussite"
+          label="Taux de réussite"
           value={formatPercent(course.successRate)}
           tone="success"
         />
@@ -79,20 +82,20 @@ export default function TeacherCourseDetailPage() {
       <RoomResourcesPanel course={course} />
 
       <section className="mt-6">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">
-          Etudiants inscrits
-        </h3>
-        {!students ? (
-          <p className="text-sm text-gray-600">Chargement...</p>
+        <h3 className="mb-2 text-sm font-semibold text-gray-700">Étudiants inscrits</h3>
+        {students === null ? (
+          <p className="py-4 text-sm text-gray-500">Chargement…</p>
+        ) : students.length === 0 ? (
+          <p className="py-4 text-sm text-gray-500">Aucun étudiant inscrit.</p>
         ) : (
           <Card className="overflow-x-auto">
-            <table aria-label="Etudiants inscrits au cours" className="min-w-full text-sm">
+            <table aria-label="Étudiants inscrits au cours" className="min-w-full text-sm">
               <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                 <tr>
-                  <th scope="col" className="px-4 py-3">Etudiant</th>
+                  <th scope="col" className="px-4 py-3">Étudiant</th>
                   <th scope="col" className="px-4 py-3">Email</th>
                   <th scope="col" className="px-4 py-3">Note</th>
-                  <th scope="col" className="px-4 py-3">Presence</th>
+                  <th scope="col" className="px-4 py-3">Présence</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -124,10 +127,6 @@ export default function TeacherCourseDetailPage() {
   );
 }
 
-/**
- * Affectation de la salle et des ressources pedagogiques du cours,
- * directement depuis la fiche (sans repasser par le formulaire complet).
- */
 function RoomResourcesPanel({ course }: { course: TeacherCourse }) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomId, setRoomId] = useState(course.roomId ?? '');
@@ -155,8 +154,8 @@ function RoomResourcesPanel({ course }: { course: TeacherCourse }) {
       const room = rooms.find((r) => r.id === roomId);
       setConfirm(
         room
-          ? `Salle ${room.name} et ressources enregistrees.`
-          : 'Ressources enregistrees (aucune salle attribuee).',
+          ? `Salle ${room.name} et ressources enregistrées.`
+          : 'Ressources enregistrées (aucune salle attribuée).',
       );
     } finally {
       setSaving(false);
@@ -164,9 +163,9 @@ function RoomResourcesPanel({ course }: { course: TeacherCourse }) {
   }
 
   return (
-    <section aria-label="Salle et ressources pedagogiques">
+    <section aria-label="Salle et ressources pédagogiques">
       <h3 className="mb-2 text-sm font-semibold text-gray-700">
-        Salle & ressources pedagogiques
+        Salle & ressources pédagogiques
       </h3>
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
@@ -179,7 +178,7 @@ function RoomResourcesPanel({ course }: { course: TeacherCourse }) {
               onChange={(e) => setRoomId(e.target.value)}
               className="w-full min-h-11 rounded-md border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
             >
-              <option value="">Aucune salle attribuee</option>
+              <option value="">Aucune salle attribuée</option>
               {campusRooms.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name} · {r.type} · cap. {r.capacity}
@@ -188,13 +187,13 @@ function RoomResourcesPanel({ course }: { course: TeacherCourse }) {
             </select>
           </label>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Enregistrement...' : 'Enregistrer'}
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
           </Button>
         </div>
 
         <fieldset className="mt-4">
           <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-600">
-            Ressources affectees
+            Ressources affectées
           </legend>
           <div className="flex flex-wrap gap-2">
             {TEACHING_RESOURCES.map((r) => {
@@ -221,10 +220,7 @@ function RoomResourcesPanel({ course }: { course: TeacherCourse }) {
         </fieldset>
 
         {confirm && (
-          <p
-            role="status"
-            className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
-          >
+          <p role="status" className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
             {confirm}
           </p>
         )}

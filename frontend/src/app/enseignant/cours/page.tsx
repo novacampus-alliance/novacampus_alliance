@@ -18,18 +18,21 @@ export default function TeacherCoursesPage() {
   return (
     <AppShell
       title="Mes cours"
-      subtitle="Cours attribues"
+      subtitle="Cours attribués"
       actions={
         <ButtonLink href="/enseignant/cours/nouveau">+ Nouveau cours</ButtonLink>
       }
     >
       <p className="mb-4 text-sm text-gray-600">
-        Cliquez sur un cours pour gerer les notes, la presence, la salle et les
-        ressources.
+        Cliquez sur un cours pour gérer les notes, la présence, la salle et les ressources.
       </p>
 
-      {!courses ? (
-        <p className="text-sm text-gray-600">Chargement...</p>
+      {courses === null ? (
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
+      ) : courses.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500">
+          Aucun cours attribué pour le moment.
+        </p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => (
@@ -49,14 +52,11 @@ export default function TeacherCoursesPage() {
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                 <Stat label="Inscrits" value={String(c.enrolledCount)} />
-                <Stat
-                  label="Reussite"
-                  value={formatPercent(c.successRate)}
-                />
+                <Stat label="Réussite" value={formatPercent(c.successRate)} />
                 <Stat label="Moyenne" value={c.averageGrade.toFixed(1)} />
               </div>
               <div className="mt-2 text-xs text-gray-600">
-                {c.roomName ? `Salle ${c.roomName}` : 'Salle non attribuee'}
+                {c.roomName ? `Salle ${c.roomName}` : 'Salle non attribuée'}
               </div>
             </Link>
           ))}
@@ -69,9 +69,7 @@ export default function TeacherCoursesPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-gray-50 px-2 py-1.5">
-      <div className="text-[11px] uppercase tracking-wide text-gray-800">
-        {label}
-      </div>
+      <div className="text-[11px] uppercase tracking-wide text-gray-800">{label}</div>
       <div className="text-sm font-semibold">{value}</div>
     </div>
   );

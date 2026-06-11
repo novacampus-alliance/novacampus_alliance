@@ -60,11 +60,11 @@ export default function TeacherGradesEntryPage() {
       const gradeNum = r.grade.trim() === '' ? null : Number(r.grade);
       const attendanceNum = Number(r.attendance);
       if (gradeNum != null && (Number.isNaN(gradeNum) || gradeNum < 0 || gradeNum > 20)) {
-        setError(`Note invalide pour ${r.studentId} (attendu : 0 a 20)`);
+        setError(`Note invalide (attendu : 0 à 20)`);
         return;
       }
       if (Number.isNaN(attendanceNum) || attendanceNum < 0 || attendanceNum > 100) {
-        setError(`Taux de presence invalide pour ${r.studentId} (attendu : 0 a 100)`);
+        setError(`Taux de présence invalide (attendu : 0 à 100)`);
         return;
       }
       parsed.push({
@@ -77,9 +77,9 @@ export default function TeacherGradesEntryPage() {
     setSaving(true);
     try {
       const res = await saveCourseGrades(id, parsed);
-      setConfirm(`Saisie enregistree pour ${res.saved} etudiant(s).`);
+      setConfirm(`Saisie enregistrée pour ${res.saved} étudiant(s).`);
     } catch {
-      setError('Une erreur est survenue. Reessayez.');
+      setError('Une erreur est survenue. Réessayez.');
     } finally {
       setSaving(false);
     }
@@ -88,7 +88,7 @@ export default function TeacherGradesEntryPage() {
   if (course === undefined) {
     return (
       <AppShell title="Saisie notes">
-        <p className="text-sm text-gray-600">Chargement...</p>
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       </AppShell>
     );
   }
@@ -102,7 +102,7 @@ export default function TeacherGradesEntryPage() {
   }
 
   return (
-    <AppShell title={`Notes — ${course.name}`} subtitle="Saisie notes & presences">
+    <AppShell title={`Notes — ${course.name}`} subtitle="Saisie notes & présences">
       <div className="mb-4">
         <Link
           href={`/enseignant/cours/${course.id}`}
@@ -111,23 +111,24 @@ export default function TeacherGradesEntryPage() {
           ← Retour au cours
         </Link>
         <p className="mt-2 text-sm text-gray-600">
-          Renseignez la note finale (sur 20) et le taux de presence (%) de
-          chaque etudiant.
+          Renseignez la note finale (sur 20) et le taux de présence (%) de chaque étudiant.
         </p>
       </div>
 
-      {!students ? (
-        <p className="text-sm text-gray-600">Chargement...</p>
+      {students === null ? (
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
+      ) : students.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500">Aucun étudiant inscrit.</p>
       ) : (
         <>
           <Card className="overflow-x-auto">
-            <table aria-label="Saisie des notes et presences" className="min-w-full text-sm">
+            <table aria-label="Saisie des notes et présences" className="min-w-full text-sm">
               <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                 <tr>
-                  <th scope="col" className="px-4 py-3">Etudiant</th>
+                  <th scope="col" className="px-4 py-3">Étudiant</th>
                   <th scope="col" className="px-4 py-3">Email</th>
-                  <th scope="col" className="px-4 py-3 w-32">Note /20</th>
-                  <th scope="col" className="px-4 py-3 w-32">Presence %</th>
+                  <th scope="col" className="w-32 px-4 py-3">Note /20</th>
+                  <th scope="col" className="w-32 px-4 py-3">Présence %</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -163,11 +164,9 @@ export default function TeacherGradesEntryPage() {
                           min={0}
                           max={100}
                           step={1}
-                          aria-label={`Taux de presence de ${s.firstName} ${s.lastName} en pourcentage`}
+                          aria-label={`Taux de présence de ${s.firstName} ${s.lastName} en pourcentage`}
                           value={row?.attendance ?? ''}
-                          onChange={(e) =>
-                            updateRow(s.id, 'attendance', e.target.value)
-                          }
+                          onChange={(e) => updateRow(s.id, 'attendance', e.target.value)}
                           className="w-24 min-h-9 rounded-md border border-gray-500 px-2 py-1.5 text-sm focus:border-amber-700"
                         />
                       </td>
@@ -179,16 +178,13 @@ export default function TeacherGradesEntryPage() {
           </Card>
 
           {error && (
-            <p role="alert" className="mt-3 text-sm font-medium text-red-800">
+            <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
               {error}
             </p>
           )}
 
           {confirm && (
-            <p
-              role="status"
-              className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
-            >
+            <p role="status" className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
               {confirm}
             </p>
           )}
@@ -198,7 +194,7 @@ export default function TeacherGradesEntryPage() {
               Annuler
             </ButtonLink>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Enregistrement...' : '💾 Enregistrer'}
+              {saving ? 'Enregistrement…' : '💾 Enregistrer'}
             </Button>
           </div>
         </>

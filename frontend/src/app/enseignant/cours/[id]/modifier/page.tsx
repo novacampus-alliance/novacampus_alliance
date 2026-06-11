@@ -22,7 +22,7 @@ export default function EditCoursePage() {
   if (course === undefined) {
     return (
       <AppShell title="Modifier le cours" subtitle="Mes cours">
-        <p className="text-sm text-gray-600">Chargement...</p>
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       </AppShell>
     );
   }
@@ -35,17 +35,14 @@ export default function EditCoursePage() {
           href="/enseignant/cours"
           className="mt-3 inline-block text-sm text-amber-900 underline underline-offset-2 hover:text-amber-950"
         >
-          Retour
+          ← Mes cours
         </Link>
       </AppShell>
     );
   }
 
   return (
-    <AppShell
-      title={`Modifier — ${course.code}`}
-      subtitle={course.name}
-    >
+    <AppShell title={`Modifier — ${course.code}`} subtitle={course.name}>
       <div className="mb-4">
         <Link
           href={`/enseignant/cours/${course.id}`}
