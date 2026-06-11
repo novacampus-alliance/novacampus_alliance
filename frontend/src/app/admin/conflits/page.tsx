@@ -323,7 +323,7 @@ export default function AdminConflictsPage() {
           >
             Tous les campus
             <span className="ml-1.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
-              {[...byCampus.values()].reduce((a, b) => a + b, 0)}
+              {Array.from(byCampus.values()).reduce((a, b) => a + b, 0)}
             </span>
           </button>
           {campusList.map((name) => {
