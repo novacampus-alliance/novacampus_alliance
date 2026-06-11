@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
+import type { AuthUser } from '@/lib/auth';
 import { Card, StatCard, StatusPill } from '@/components/ui';
 import { fetchGrades, fetchInvoices, fetchSchedule } from '@/lib/api';
 import { formatEUR, formatTime } from '@/lib/format';
@@ -12,11 +13,16 @@ export default function EtudiantDashboardPage() {
   const [grades, setGrades] = useState<CourseGrade[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [schedule, setSchedule] = useState<ScheduleSlot[]>([]);
+  const [sessionUser, setSessionUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     fetchGrades().then(setGrades);
     fetchInvoices().then(setInvoices);
     fetchSchedule().then(setSchedule);
+    fetch('/bff/session')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setSessionUser(data as AuthUser); })
+      .catch(() => {});
   }, []);
 
   const graded = grades.filter((g) => g.finalGrade != null);
@@ -34,7 +40,7 @@ export default function EtudiantDashboardPage() {
     .slice(0, 4);
 
   return (
-    <AppShell title="Tableau de bord" subtitle="Bonjour Alice 👋">
+    <AppShell title="Tableau de bord" subtitle={`Bonjour ${sessionUser?.firstName || 'étudiant'} 👋`}>
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Moyenne generale" value={average} />
         <StatCard label="ECTS valides" value={String(ects)} tone="success" />

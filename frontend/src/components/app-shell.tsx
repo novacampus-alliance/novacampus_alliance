@@ -8,6 +8,8 @@ import {
   PORTAL_BY_PREFIX,
   ROLE_SWITCHER,
 } from '@/lib/nav-config';
+import type { AuthUser } from '@/lib/auth';
+import { ROLE_LABELS } from '@/lib/auth';
 import { Icon } from '@/components/icons';
 import { LogoMark } from '@/components/logo';
 import { NotificationsBell } from '@/components/notifications';
@@ -37,13 +39,31 @@ export function AppShell({
   // portails). Le rôle est lu depuis le cookie non-httpOnly `user_role`
   // posé au login — purement cosmétique : le middleware (JWT) fait foi.
   const [isDemo, setIsDemo] = useState(false);
+  const [sessionUser, setSessionUser] = useState<AuthUser | null>(null);
   useEffect(() => {
     setIsDemo(/(?:^|;\s*)user_role=DEMO(?:;|$)/.test(document.cookie));
+    fetch('/bff/session')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setSessionUser(data as AuthUser); })
+      .catch(() => {});
   }, []);
 
   const config = configForPath(pathname);
   const portalPrefix =
     PORTAL_BY_PREFIX.find((p) => p.config.role === config.role)?.prefix ?? '/';
+
+  const profileName = sessionUser
+    ? `${sessionUser.firstName} ${sessionUser.lastName}`.trim()
+    : config.profile.name;
+  const profileSub = sessionUser
+    ? ROLE_LABELS[sessionUser.role]
+    : config.profile.subtitle;
+  const profileInitials = profileName
+    .split(' ')
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   // Fermeture du volet mobile au clavier (Echap).
   useEffect(() => {
@@ -169,26 +189,21 @@ export function AppShell({
       {/* Profil / deconnexion */}
       <button
         onClick={handleLogout}
-        aria-label={`Se deconnecter — ${config.profile.name}`}
+        aria-label={`Se deconnecter — ${profileName}`}
         className="flex min-h-11 items-center gap-3 border-t border-sidebar-border px-4 py-3 text-left transition-colors hover:bg-sidebar-hover"
       >
         <span
           aria-hidden="true"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-400 text-xs font-bold text-zinc-950"
         >
-          {config.profile.name
-            .split(' ')
-            .map((p) => p[0])
-            .join('')
-            .slice(0, 2)
-            .toUpperCase()}
+          {profileInitials}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-white">
-            {config.profile.name}
+            {profileName}
           </span>
           <span className="block truncate text-[11px] text-sidebar-muted">
-            {config.profile.subtitle}
+            {profileSub}
           </span>
         </span>
         <Icon name="logout" className="h-5 w-5 text-sidebar-muted" />
