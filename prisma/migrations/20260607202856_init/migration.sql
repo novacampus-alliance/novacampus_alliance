@@ -129,7 +129,7 @@ CREATE TABLE "enrollments" (
     "academic_year" VARCHAR(50) NOT NULL,
     "status" VARCHAR(50),
     "final_grade" DECIMAL(4,2),
-    "attendance_rate" DECIMAL(4,2),
+    "attendance_rate" DECIMAL(5,2),
     "enrollment_date" DATE NOT NULL,
 
     CONSTRAINT "enrollments_pkey" PRIMARY KEY ("enrollment_id")
@@ -202,7 +202,7 @@ CREATE TABLE "kpi_dashboard" (
     "campus_id" VARCHAR(50) NOT NULL,
     "total_students" INTEGER,
     "enrollment_rate_percent" DECIMAL(4,2),
-    "average_attendance_percent" DECIMAL(4,2),
+    "average_attendance_percent" DECIMAL(5,2),
     "success_rate_percent" DECIMAL(4,2),
     "revenue" DECIMAL(12,2),
     "payment_default_rate_percent" DECIMAL(4,2),
