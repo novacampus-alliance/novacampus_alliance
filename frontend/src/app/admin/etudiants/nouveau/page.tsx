@@ -5,7 +5,7 @@ import { StudentForm } from '../student-form';
 
 export default function NewStudentPage() {
   return (
-    <AppShell title="Nouvel etudiant" subtitle="Creer une fiche">
+    <AppShell title="Nouvel étudiant" subtitle="Créer une fiche">
       <div className="mb-4">
         <Link
           href="/admin/etudiants"

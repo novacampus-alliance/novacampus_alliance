@@ -21,21 +21,21 @@ export default function EditStudentPage() {
 
   if (student === undefined) {
     return (
-      <AppShell title="Edition etudiant" subtitle="Etudiants">
-        <p className="text-sm text-gray-600">Chargement...</p>
+      <AppShell title="Édition étudiant" subtitle="Étudiants">
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       </AppShell>
     );
   }
 
   if (student === null) {
     return (
-      <AppShell title="Edition etudiant" subtitle="Etudiants">
+      <AppShell title="Édition étudiant" subtitle="Étudiants">
         <p className="text-sm text-gray-600">Fiche introuvable.</p>
         <Link
           href="/admin/etudiants"
           className="mt-3 inline-block text-sm text-amber-900 underline underline-offset-2 hover:text-amber-950"
         >
-          Retour
+          ← Retour
         </Link>
       </AppShell>
     );

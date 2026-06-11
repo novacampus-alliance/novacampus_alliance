@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, StatusPill } from '@/components/ui';
 import { WeekCalendar } from '@/components/week-calendar';
 import { fetchAdminSchedule, fetchConflicts } from '@/lib/api';
 import { formatDate, formatTime } from '@/lib/format';
@@ -44,7 +44,7 @@ export default function AdminPlanningsPage() {
 
   function assignRoom(conflictId: string, roomName: string) {
     setResolved((prev) => new Set(prev).add(conflictId));
-    setConfirm(`Salle ${roomName} attribuee. Conflit resolu.`);
+    setConfirm(`Salle ${roomName} attribuée. Conflit résolu.`);
     setTimeout(() => setConfirm(null), 3000);
   }
 
@@ -79,7 +79,7 @@ export default function AdminPlanningsPage() {
       };
       return [...prev, newSlot];
     });
-    setConfirm(slotId ? 'Creneau mis a jour.' : 'Nouveau creneau cree.');
+    setConfirm(slotId ? 'Créneau mis à jour.' : 'Nouveau créneau créé.');
     setTimeout(() => setConfirm(null), 3000);
     setEditing(null);
     setCreating(false);
@@ -95,33 +95,28 @@ export default function AdminPlanningsPage() {
             aria-label="Filtrer par campus"
             value={campus}
             onChange={(e) => setCampus(e.target.value)}
-            className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm placeholder:text-gray-600 focus:border-amber-700"
+            className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
           >
             <option value="ALL">Tous les campus</option>
             {campuses.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
-          <Button onClick={() => setCreating(true)}>+ Nouveau creneau</Button>
+          <Button onClick={() => setCreating(true)}>+ Nouveau créneau</Button>
         </>
       }
     >
-
       {confirm && (
         <p role="status" className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
           {confirm}
         </p>
       )}
 
-      <section className="mb-6">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">
-          Conflits detectes
-        </h3>
-        {conflicts.length === 0 ? (
-          <p className="text-sm text-gray-600">Aucun conflit detecte.</p>
-        ) : (
+      {conflicts.length > 0 && (
+        <section className="mb-6">
+          <h3 className="mb-2 text-sm font-semibold text-gray-700">
+            Conflits détectés ({conflicts.filter((c) => !resolved.has(c.id)).length} ouverts)
+          </h3>
           <div className="space-y-3">
             {conflicts.map((c) => {
               const isResolved = resolved.has(c.id);
@@ -139,57 +134,53 @@ export default function AdminPlanningsPage() {
                   <header className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold">
-                        {isResolved ? 'Conflit resolu' : c.reason}
+                        {isResolved ? 'Conflit résolu' : c.reason}
                       </div>
                       <div className="text-xs text-gray-600">
-                        Severite : {c.severity}
+                        Sévérité : {c.severity === 'CRITICAL' ? 'Critique' : 'Avertissement'}
                       </div>
                     </div>
                     {isResolved && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] uppercase tracking-wide text-emerald-800">
-                        Resolu
-                      </span>
+                      <StatusPill tone="success">Résolu</StatusPill>
                     )}
                   </header>
                   {!isResolved && (
                     <>
                       <ul className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
                         {c.slots.map((s) => (
-                          <li
-                            key={s.id}
-                            className="rounded border bg-white px-2 py-1"
-                          >
+                          <li key={s.id} className="rounded border bg-white px-2 py-1">
                             {s.courseName} · {formatDate(s.startsAt)}{' '}
-                            {formatTime(s.startsAt)} — Salle {s.roomName} ·{' '}
-                            {s.campus}
+                            {formatTime(s.startsAt)} — Salle {s.roomName}
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-3">
-                        <div className="text-xs font-medium text-gray-700">
-                          Suggestions de salles :
+                      {c.suggestedRooms.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-xs font-medium text-gray-700">
+                            Suggestions de salles :
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {c.suggestedRooms.map((r) => (
+                              <button
+                                key={r.roomId}
+                                onClick={() => assignRoom(c.id, r.roomName)}
+                                aria-label={`Attribuer la salle ${r.roomName}`}
+                                className="rounded-md border border-gray-500 bg-white px-2 py-1.5 text-xs font-medium hover:border-amber-700 hover:bg-brand-50"
+                              >
+                                {r.roomName} · cap. {r.capacity}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {c.suggestedRooms.map((r) => (
-                            <button
-                              key={r.roomId}
-                              onClick={() => assignRoom(c.id, r.roomName)}
-                              aria-label={`Attribuer la salle ${r.roomName}`}
-                              className="rounded-md border border-gray-500 bg-white px-2 py-1.5 text-xs font-medium hover:border-amber-700 hover:bg-brand-50"
-                            >
-                              {r.roomName} · cap. {r.capacity}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      )}
                     </>
                   )}
                 </article>
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="mb-4">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">
@@ -200,10 +191,10 @@ export default function AdminPlanningsPage() {
 
       <section>
         <h3 className="mb-2 text-sm font-semibold text-gray-700">
-          Liste des creneaux
+          Liste des créneaux ({filteredSlots.length})
         </h3>
         <Card className="overflow-x-auto">
-          <table aria-label="Liste des creneaux" className="min-w-full text-sm">
+          <table aria-label="Liste des créneaux" className="min-w-full text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
               <tr>
                 <th scope="col" className="px-4 py-3">Cours</th>
@@ -212,35 +203,39 @@ export default function AdminPlanningsPage() {
                 <th scope="col" className="px-4 py-3">Salle</th>
                 <th scope="col" className="px-4 py-3">Date</th>
                 <th scope="col" className="px-4 py-3">Horaires</th>
-                <th scope="col" className="px-4 py-3"></th>
+                <th scope="col" className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredSlots.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {s.courseName}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{s.instructorName}</td>
-                  <td className="px-4 py-3 text-gray-700">{s.campus}</td>
-                  <td className="px-4 py-3 text-gray-700">{s.roomName}</td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {formatDate(s.startsAt)}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {formatTime(s.startsAt)} – {formatTime(s.endsAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setEditing(s)}
-                      aria-label={`Editer le creneau ${s.courseName}`}
-                      className="text-sm font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
-                    >
-                      Editer
-                    </button>
+              {filteredSlots.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                    Aucun créneau trouvé.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredSlots.map((s) => (
+                  <tr key={s.id}>
+                    <td className="px-4 py-3 font-medium text-gray-900">{s.courseName}</td>
+                    <td className="px-4 py-3 text-gray-700">{s.instructorName}</td>
+                    <td className="px-4 py-3 text-gray-700">{s.campus}</td>
+                    <td className="px-4 py-3 text-gray-700">{s.roomName}</td>
+                    <td className="px-4 py-3 text-gray-700">{formatDate(s.startsAt)}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {formatTime(s.startsAt)} – {formatTime(s.endsAt)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => setEditing(s)}
+                        aria-label={`Éditer le créneau ${s.courseName}`}
+                        className="text-sm font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
+                      >
+                        Éditer
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </Card>
@@ -249,10 +244,7 @@ export default function AdminPlanningsPage() {
       {(creating || editing) && (
         <SlotDialog
           slot={editing ?? undefined}
-          onClose={() => {
-            setEditing(null);
-            setCreating(false);
-          }}
+          onClose={() => { setEditing(null); setCreating(false); }}
           onSave={(draft) => handleSaveSlot(draft, editing?.id)}
         />
       )}
@@ -282,58 +274,42 @@ function SlotDialog({
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
         <h3 className="mb-3 text-base font-semibold">
-          {slot ? 'Editer le creneau' : 'Nouveau creneau'}
+          {slot ? 'Éditer le créneau' : 'Nouveau créneau'}
         </h3>
         <div className="grid gap-3">
-          <Input
-            label="Cours"
-            value={draft.courseName}
-            onChange={(v) => setDraft({ ...draft, courseName: v })}
-          />
-          <Input
-            label="Enseignant"
-            value={draft.instructorName}
-            onChange={(v) => setDraft({ ...draft, instructorName: v })}
-          />
+          <Field label="Cours" value={draft.courseName} onChange={(v) => setDraft({ ...draft, courseName: v })} />
+          <Field label="Enseignant" value={draft.instructorName} onChange={(v) => setDraft({ ...draft, instructorName: v })} />
           <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Salle"
-              value={draft.roomName}
-              onChange={(v) => setDraft({ ...draft, roomName: v })}
-            />
-            <Input
-              label="Campus"
-              value={draft.campus}
-              onChange={(v) => setDraft({ ...draft, campus: v })}
-            />
+            <Field label="Salle" value={draft.roomName} onChange={(v) => setDraft({ ...draft, roomName: v })} />
+            <Field label="Campus" value={draft.campus} onChange={(v) => setDraft({ ...draft, campus: v })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Debut"
-              type="datetime-local"
-              value={draft.startsAt}
-              onChange={(v) => setDraft({ ...draft, startsAt: v })}
-            />
-            <Input
-              label="Fin"
-              type="datetime-local"
-              value={draft.endsAt}
-              onChange={(v) => setDraft({ ...draft, endsAt: v })}
-            />
+            <Field label="Début" type="datetime-local" value={draft.startsAt} onChange={(v) => setDraft({ ...draft, startsAt: v })} />
+            <Field label="Fin" type="datetime-local" value={draft.endsAt} onChange={(v) => setDraft({ ...draft, endsAt: v })} />
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
             Annuler
-          </Button>
-          <Button onClick={() => onSave(draft)}>Enregistrer</Button>
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(draft)}
+            className="rounded-md bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800"
+          >
+            Enregistrer
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function Input({
+function Field({
   label,
   value,
   onChange,

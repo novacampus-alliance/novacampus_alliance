@@ -10,6 +10,7 @@ import type { AdminStudent } from '@/lib/types';
 export default function AdminEnrollmentsPage() {
   const [students, setStudents] = useState<AdminStudent[] | null>(null);
   const [program, setProgram] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   useEffect(() => {
     fetchAdminStudents().then(setStudents);
@@ -21,13 +22,12 @@ export default function AdminEnrollmentsPage() {
   );
 
   const filtered = (students ?? []).filter(
-    (s) => program === 'ALL' || s.program === program,
+    (s) =>
+      (program === 'ALL' || s.program === program) &&
+      (statusFilter === 'ALL' || s.status === statusFilter),
   );
 
-  const totalEnrollments = (students ?? []).reduce(
-    (s, x) => s + x.enrolledCourses,
-    0,
-  );
+  const totalEnrollments = (students ?? []).reduce((s, x) => s + x.enrolledCourses, 0);
   const withoutCourses = (students ?? []).filter(
     (s) => s.enrolledCourses === 0 && s.status === 'ACTIF',
   ).length;
@@ -37,39 +37,50 @@ export default function AdminEnrollmentsPage() {
       title="Inscriptions"
       subtitle="Programmes & cours"
       actions={
-        <select
-          aria-label="Filtrer par programme"
-          value={program}
-          onChange={(e) => setProgram(e.target.value)}
-          className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm placeholder:text-gray-600 focus:border-amber-700"
-        >
-          <option value="ALL">Tous les programmes</option>
-          {programs.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            aria-label="Filtrer par programme"
+            value={program}
+            onChange={(e) => setProgram(e.target.value)}
+            className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
+          >
+            <option value="ALL">Tous les programmes</option>
+            {programs.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Filtrer par statut"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
+          >
+            <option value="ALL">Tous statuts</option>
+            <option value="ACTIF">Actif</option>
+            <option value="INACTIF">Inactif</option>
+            <option value="DIPLOME">Diplômé</option>
+          </select>
+        </div>
       }
     >
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <StatCard label="Etudiants" value={String((students ?? []).length)} />
+        <StatCard label="Étudiants" value={String((students ?? []).length)} />
         <StatCard label="Inscriptions cours" value={String(totalEnrollments)} />
         <StatCard
           label="Actifs sans cours"
           value={String(withoutCourses)}
-          tone={withoutCourses ? 'warning' : 'success'}
+          tone={withoutCourses > 0 ? 'warning' : 'success'}
         />
       </div>
 
-      {!students ? (
-        <p className="text-sm text-gray-600">Chargement...</p>
+      {students === null ? (
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       ) : (
         <Card className="overflow-x-auto">
-          <table aria-label="Inscriptions des etudiants" className="min-w-full text-sm">
+          <table aria-label="Inscriptions des étudiants" className="min-w-full text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
               <tr>
-                <th scope="col" className="px-4 py-3">Etudiant</th>
+                <th scope="col" className="px-4 py-3">Étudiant</th>
                 <th scope="col" className="px-4 py-3">Programme</th>
                 <th scope="col" className="px-4 py-3">Campus</th>
                 <th scope="col" className="px-4 py-3">Cours inscrits</th>
@@ -109,7 +120,7 @@ export default function AdminEnrollmentsPage() {
                             : 'neutral'
                       }
                     >
-                      {s.status}
+                      {s.status === 'ACTIF' ? 'Actif' : s.status === 'DIPLOME' ? 'Diplômé' : 'Inactif'}
                     </StatusPill>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -117,11 +128,18 @@ export default function AdminEnrollmentsPage() {
                       href={`/admin/etudiants/${s.id}`}
                       className="text-sm font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
                     >
-                      Gerer
+                      Gérer
                     </Link>
                   </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                    Aucun résultat.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </Card>

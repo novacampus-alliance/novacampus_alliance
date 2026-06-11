@@ -8,27 +8,17 @@ import { fetchAdminStudents } from '@/lib/api';
 import type { AdminStudent } from '@/lib/types';
 
 function toCSV(rows: AdminStudent[]): string {
-  const headers = [
-    'id',
-    'firstName',
-    'lastName',
-    'email',
-    'campus',
-    'program',
-    'status',
-    'enrolledCourses',
-  ];
+  const headers = ['id', 'firstName', 'lastName', 'email', 'campus', 'program', 'status', 'enrolledCourses'];
   const esc = (v: string | number) => {
     const s = String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const lines = [
+  return [
     headers.join(','),
     ...rows.map((r) =>
       headers.map((h) => esc((r as unknown as Record<string, string | number>)[h])).join(','),
     ),
-  ];
-  return lines.join('\n');
+  ].join('\n');
 }
 
 export default function AdminStudentsPage() {
@@ -83,7 +73,7 @@ export default function AdminStudentsPage() {
 
   return (
     <AppShell
-      title="Etudiants"
+      title="Étudiants"
       subtitle="Annuaire et inscriptions"
       actions={
         <>
@@ -91,7 +81,7 @@ export default function AdminStudentsPage() {
             ⬇ Exporter CSV
           </Button>
           <ButtonLink href="/admin/etudiants/nouveau">
-            + Nouvel etudiant
+            + Nouvel étudiant
           </ButtonLink>
         </>
       }
@@ -109,38 +99,34 @@ export default function AdminStudentsPage() {
           aria-label="Filtrer par campus"
           value={campus}
           onChange={(e) => setCampus(e.target.value)}
-          className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm placeholder:text-gray-600 focus:border-amber-700"
+          className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
         >
           <option value="ALL">Tous les campus</option>
           {filterOptions.campuses.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
         <select
           aria-label="Filtrer par programme"
           value={program}
           onChange={(e) => setProgram(e.target.value)}
-          className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm placeholder:text-gray-600 focus:border-amber-700"
+          className="min-h-11 rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
         >
           <option value="ALL">Tous les programmes</option>
           {filterOptions.programs.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
+            <option key={p} value={p}>{p}</option>
           ))}
         </select>
       </div>
 
-      {!students ? (
-        <p className="text-sm text-gray-600">Chargement...</p>
+      {students === null ? (
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       ) : (
         <Card className="overflow-x-auto">
-          <table aria-label="Annuaire des etudiants" className="min-w-full text-sm">
+          <table aria-label="Annuaire des étudiants" className="min-w-full text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
               <tr>
-                <th scope="col" className="px-4 py-3">Etudiant</th>
+                <th scope="col" className="px-4 py-3">Étudiant</th>
                 <th scope="col" className="px-4 py-3">Campus</th>
                 <th scope="col" className="px-4 py-3">Programme</th>
                 <th scope="col" className="px-4 py-3">Cours</th>
@@ -168,9 +154,7 @@ export default function AdminStudentsPage() {
                   <td className="px-4 py-3">
                     <FiliereBadge label={s.program} />
                   </td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {s.enrolledCourses}
-                  </td>
+                  <td className="px-4 py-3 text-gray-700">{s.enrolledCourses}</td>
                   <td className="px-4 py-3">
                     <StatusPill
                       tone={
@@ -181,7 +165,7 @@ export default function AdminStudentsPage() {
                             : 'neutral'
                       }
                     >
-                      {s.status}
+                      {s.status === 'ACTIF' ? 'Actif' : s.status === 'DIPLOME' ? 'Diplômé' : 'Inactif'}
                     </StatusPill>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -189,21 +173,27 @@ export default function AdminStudentsPage() {
                       href={`/admin/etudiants/${s.id}`}
                       className="text-sm font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
                     >
-                      Editer
+                      Éditer
                     </Link>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-600">
-                    Aucun resultat.
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                    Aucun résultat.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </Card>
+      )}
+
+      {students !== null && (
+        <p className="mt-3 text-xs text-gray-600">
+          {students.length} étudiant(s) · {filtered.length} affiché(s)
+        </p>
       )}
     </AppShell>
   );

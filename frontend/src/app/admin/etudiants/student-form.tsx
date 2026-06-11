@@ -1,24 +1,18 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui';
+import { fetchCampuses, fetchPrograms } from '@/lib/api';
 import type { AdminStudent } from '@/lib/types';
+
+const FALLBACK_PROGRAMS = ['L1 INFO', 'L2 INFO', 'L3 INFO', 'M1 INFO', 'M2 INFO'];
+const FALLBACK_CAMPUSES = ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Lille'];
 
 interface Props {
   initial?: AdminStudent;
   mode: 'create' | 'edit';
 }
-
-const PROGRAMS = ['L1 INFO', 'L2 INFO', 'L3 INFO', 'M1 INFO', 'M2 INFO'];
-const CAMPUSES = ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Lille'];
-const COURSES = [
-  { id: 'c-info-101', name: 'INFO101 — Algorithmique avancee' },
-  { id: 'c-info-220', name: 'INFO220 — Bases de donnees' },
-  { id: 'c-info-310', name: 'INFO310 — Architecture micro-services' },
-  { id: 'c-math-220', name: 'MATH220 — Algebre lineaire' },
-  { id: 'c-eng-150', name: 'ENG150 — Anglais professionnel' },
-];
 
 export function StudentForm({ initial, mode }: Props) {
   const router = useRouter();
@@ -26,56 +20,75 @@ export function StudentForm({ initial, mode }: Props) {
   const [firstName, setFirstName] = useState(initial?.firstName ?? '');
   const [lastName, setLastName] = useState(initial?.lastName ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
-  const [campus, setCampus] = useState(initial?.campus ?? 'Paris');
-  const [program, setProgram] = useState(initial?.program ?? 'L1 INFO');
+  const [campus, setCampus] = useState(initial?.campus ?? '');
+  const [program, setProgram] = useState(initial?.program ?? '');
   const [status, setStatus] = useState<AdminStudent['status']>(initial?.status ?? 'ACTIF');
-  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  function toggleCourse(id: string) {
-    setSelectedCourses((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
+  const [campuses, setCampuses] = useState<{ id: string; name: string }[]>([]);
+  const [programs, setPrograms] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetchCampuses().then((data) => {
+      if (data.length > 0) {
+        setCampuses(data);
+        if (!campus) setCampus(data[0].name);
+      } else {
+        setCampuses(FALLBACK_CAMPUSES.map((n) => ({ id: n, name: n })));
+        if (!campus) setCampus(FALLBACK_CAMPUSES[0]);
+      }
+    });
+    fetchPrograms().then((data) => {
+      if (data.length > 0) {
+        setPrograms(data);
+        if (!program) setProgram(data[0].name);
+      } else {
+        setPrograms(FALLBACK_PROGRAMS.map((n) => ({ id: n, name: n })));
+        if (!program) setProgram(FALLBACK_PROGRAMS[0]);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     setConfirm(null);
+    setError(null);
 
     const payload = {
-      firstName,
-      lastName,
+      first_name: firstName,
+      last_name: lastName,
       email,
-      campus,
-      program,
+      campus_id: campuses.find((c) => c.name === campus)?.id ?? campus,
+      program_id: programs.find((p) => p.name === program)?.id ?? program,
       status,
-      enrollments: selectedCourses,
     };
 
     try {
-      const url =
-        mode === 'create'
-          ? '/api/students'
-          : `/api/students/${initial?.id}`;
+      const url = mode === 'create' ? '/api/students' : `/api/students/${initial?.id}`;
       const method = mode === 'create' ? 'POST' : 'PATCH';
-      try {
-        await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-      } catch {
-        /* on continue meme si le backend n'est pas dispo */
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body: { message?: string } = await res.json().catch(() => ({}));
+        setError(body.message ?? `Erreur ${res.status}`);
+        return;
       }
       setConfirm(
         mode === 'create'
-          ? 'Fiche etudiant creee avec succes.'
-          : 'Modifications enregistrees.',
+          ? 'Fiche étudiant créée avec succès.'
+          : 'Modifications enregistrées.',
       );
       setTimeout(() => router.push('/admin/etudiants'), 800);
+    } catch {
+      setError('Impossible de contacter le serveur.');
     } finally {
       setSaving(false);
     }
@@ -84,7 +97,7 @@ export function StudentForm({ initial, mode }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <fieldset className="grid gap-3 sm:grid-cols-2">
-        <Field label="Prenom">
+        <Field label="Prénom">
           <input
             required
             value={firstName}
@@ -117,7 +130,7 @@ export function StudentForm({ initial, mode }: Props) {
           >
             <option value="ACTIF">Actif</option>
             <option value="INACTIF">Inactif</option>
-            <option value="DIPLOME">Diplome</option>
+            <option value="DIPLOME">Diplômé</option>
           </select>
         </Field>
         <Field label="Campus">
@@ -126,10 +139,8 @@ export function StudentForm({ initial, mode }: Props) {
             onChange={(e) => setCampus(e.target.value)}
             className="w-full min-h-11 rounded-md border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
           >
-            {CAMPUSES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+            {campuses.map((c) => (
+              <option key={c.id} value={c.name}>{c.name}</option>
             ))}
           </select>
         </Field>
@@ -139,41 +150,21 @@ export function StudentForm({ initial, mode }: Props) {
             onChange={(e) => setProgram(e.target.value)}
             className="w-full min-h-11 rounded-md border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
           >
-            {PROGRAMS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
+            {programs.map((p) => (
+              <option key={p.id} value={p.name}>{p.name}</option>
             ))}
           </select>
         </Field>
       </fieldset>
 
-      <fieldset>
-        <legend className="mb-2 text-sm font-medium text-gray-700">
-          Inscriptions aux cours
-        </legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {COURSES.map((c) => (
-            <label
-              key={c.id}
-              className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm"
-            >
-              <input
-                type="checkbox"
-                checked={selectedCourses.includes(c.id)}
-                onChange={() => toggleCourse(c.id)}
-              />
-              <span>{c.name}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {error && (
+        <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {error}
+        </p>
+      )}
 
       {confirm && (
-        <p
-          role="status"
-          className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
-        >
+        <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
           {confirm}
         </p>
       )}
@@ -188,9 +179,9 @@ export function StudentForm({ initial, mode }: Props) {
         </Button>
         <Button type="submit" disabled={saving}>
           {saving
-            ? 'Enregistrement...'
+            ? 'Enregistrement…'
             : mode === 'create'
-              ? 'Creer la fiche'
+              ? 'Créer la fiche'
               : 'Enregistrer'}
         </Button>
       </div>
@@ -198,13 +189,7 @@ export function StudentForm({ initial, mode }: Props) {
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-600">
