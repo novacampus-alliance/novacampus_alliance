@@ -16,8 +16,6 @@ async function bootstrap() {
       'API REST de gestion des paiements et de la facturation étudiante (MongoDB + PostgreSQL).',
     )
     .setVersion('1.0')
-    .addTag('Paiements', 'Gestion complète des paiements étudiants (MongoDB)')
-    .addTag('Payments', 'Consultation paiements PostgreSQL (lecture seule)')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

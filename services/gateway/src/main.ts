@@ -12,6 +12,7 @@ async function bootstrap() {
   const academicUrl = process.env.ACADEMIC_SERVICE_URL  ?? 'http://localhost:3002';
   const billingUrl  = process.env.BILLING_SERVICE_URL   ?? 'http://localhost:3003';
   const notifUrl    = process.env.NOTIFICATION_SERVICE_URL ?? 'http://localhost:3004';
+  const aiUrl       = process.env.AI_SERVICE_URL        ?? 'http://localhost:8000';
 
   // ── Swagger agrégé — enregistré via SwaggerModule AVANT app.listen() ─────────
   // SwaggerModule.setup() enregistre ses routes via le système NestJS natif,
@@ -19,7 +20,13 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Novacampus Alliance — API Docs')
     .setDescription(
-      'Sélectionnez un service dans la liste déroulante pour explorer ses routes.',
+      'Documentation unifiée SOA — sélectionnez un service dans la liste déroulante.\n\n'
+      + '| Service | Contenu |\n'
+      + '|---------|--------|\n'
+      + '| Academic | Auth, campus, EDT, conflits, inscriptions |\n'
+      + '| Billing | Paiements, factures |\n'
+      + '| Notification | Alertes email / push |\n'
+      + '| AI Service | Agent M7 — résolution conflits EDT |',
     )
     .setVersion('1.0')
     .addBearerAuth(
@@ -38,6 +45,7 @@ async function bootstrap() {
         { url: '/api/academic-spec', name: 'Academic Service' },
         { url: '/api/billing-spec',  name: 'Billing Service'  },
         { url: '/api/notif-spec',    name: 'Notification Service' },
+        { url: '/api/ai-spec',       name: 'AI Service — Agent Conflits EDT' },
       ],
       urls_primary_name: 'Academic Service',
       persistAuthorization: true,
@@ -70,6 +78,14 @@ async function bootstrap() {
       changeOrigin: true,
       pathFilter: '/api/notif-spec',
       pathRewrite: { '^/api/notif-spec': '/api/docs-json' },
+    }),
+  );
+  expressApp.use(
+    createProxyMiddleware({
+      target: aiUrl,
+      changeOrigin: true,
+      pathFilter: '/api/ai-spec',
+      pathRewrite: { '^/api/ai-spec': '/openapi.json' },
     }),
   );
 

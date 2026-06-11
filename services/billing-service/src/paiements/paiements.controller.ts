@@ -7,7 +7,7 @@ import { PaiementsService } from './paiements.service';
 import { CreatePaiementDto, UpdatePaiementDto, ConfirmerPaiementDto, FilterPaiementDto } from './dto/paiement.dto';
 import { StatutPaiement } from './paiement.schema';
 
-@ApiTags('Paiements (MongoDB)')
+@ApiTags('Paiements')
 @Controller('paiements')
 export class PaiementsController {
   constructor(private readonly svc: PaiementsService) {}
