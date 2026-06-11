@@ -27,14 +27,14 @@ flowchart TB
         SF["Svc Facturation<br/>billing-service :3003"]
         SN["Svc Notification<br/>notification-service :3004"]
         subgraph AI["ai-service/ — Python + FastAPI + LangChain"]
-            SIA["Svc IA — Agent de Relance Financière<br/>Détection retards · Relances LLM<br/>Échéanciers · Escalade humaine"]
+            SIA["Svc IA — Agent Résolution Conflits EDT<br/>Orchestration · Suggestions · Explication LLM"]
         end
     end
 
     subgraph DATA["🟩 Couche Données & Stockage"]
         direction LR
         PG[("PostgreSQL<br/>Prisma ORM<br/>Données structurées")]
-        MG[("MongoDB<br/>Documents · Logs<br/>Historique relances IA")]
+        MG[("MongoDB<br/>Documents · Logs<br/>Historique IA")]
         RD[("Redis<br/>Sessions · Cache")]
     end
 
@@ -46,9 +46,8 @@ flowchart TB
     SF --> PG & MG
     SN --> MG & RD
     SIA --> MG & RD
-    SF -.->|HTTP interne| SIA
-    SN -.->|événements| SIA
-    SA -.->|données étudiants| SIA
+    SIA -.->|orchestration HTTP| GW2
+    GW2 -.-> SA
 ```
 
 ---
@@ -78,13 +77,16 @@ sequenceDiagram
         B-->>F: Réponse JSON
     end
 
-    alt Agent IA — Relance impayés
-        B->>A: POST /api/v1/relances/generer
-        A->>P: Récupération PAYMENTS (via NestJS)
-        A->>M: Historique relances précédentes
-        A->>A: Génération relance LLM (LangChain)
-        A-->>B: Brouillon personnalisé
-        B-->>F: Relance en attente de validation
+    alt Agent IA — Résolution conflits EDT
+        F->>G2: POST /api/v1/conflicts/suggest/auto + JWT
+        G2->>A: Routage ai-service
+        A->>G2: GET /api/schedules/conflicts
+        G2->>B: academic-service
+        B->>P: Plannings · salles
+        A->>G2: GET /api/rooms/available
+        G2->>B: academic-service
+        A->>A: Règles + explication LLM (LangChain / Groq)
+        A-->>F: Suggestions structurées + texte
     end
 
     F-->>U: Affichage
@@ -119,17 +121,16 @@ flowchart LR
         N4[Rappels deadlines]
     end
 
-    subgraph IA["Svc IA — Relance Financière"]
-        I1[Surveillance PAYMENTS]
-        I2[Détection retards]
-        I3[Relances LLM personnalisées]
-        I4[Proposition échéanciers]
-        I5[Escalade humaine]
+    subgraph IA["Svc IA — Résolution Conflits EDT"]
+        I1[Orchestration gateway]
+        I2[Moteur de règles]
+        I3[Suggestions change_room / reschedule]
+        I4[Explication LLM Groq]
+        I5[Fallback template]
     end
 
-    FACTURATION --> IA
-    IA --> NOTIFICATION
-    ACADEMIQUE --> FACTURATION
+    ACADEMIQUE --> IA
+    IA -.->|HTTP| ACADEMIQUE
 ```
 
 ---
@@ -143,7 +144,7 @@ flowchart LR
 | Svc Académique | `services/academic-service/` | 3002 | NestJS, Prisma, Redis (auth, campus) |
 | Svc Facturation | `services/billing-service/` | 3003 | NestJS, Prisma (payments) |
 | Svc Notification | `services/notification-service/` | 3004 | NestJS, Prisma (notifications) |
-| Svc IA | `ai-service/` | 8000 | FastAPI, LangChain, OpenAI |
+| Svc IA | `ai-service/` | 8000 | FastAPI, LangChain, Groq — [guide M7](./m7-agent-conflits-edt.md) |
 | Données relationnelles | `prisma/` | — | PostgreSQL + Prisma ORM |
 | Infrastructure | `docker-compose.yml` | — | Docker Compose, VPS IONOS |
 
