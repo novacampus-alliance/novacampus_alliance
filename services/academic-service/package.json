@@ -15,7 +15,7 @@
     "prisma:seed:m7-conflict": "ts-node --project scripts/tsconfig.json scripts/seed-m7-edt-conflict.ts"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "ts-node --transpile-only --compiler-options {\"module\":\"CommonJS\",\"esModuleInterop\":true} ../../prisma/seed/seed.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^8.4.1",

@@ -11,6 +11,7 @@ export interface ScheduleSlot {
   id: string;
   courseId: string;
   courseName: string;
+  instructorId?: string;
   instructorName: string;
   roomId: string;
   roomName: string;
@@ -138,6 +139,9 @@ export interface ScheduleConflict {
   id: string;
   severity: ConflictSeverity;
   reason: string;
+  conflictType: 'room' | 'instructor';
+  campusId: string;
+  campusName: string;
   slots: ScheduleSlot[];
   suggestedRooms: { roomId: string; roomName: string; capacity: number }[];
 }
@@ -170,6 +174,7 @@ export interface DashboardStudent {
 /** Carte d'alerte de paiement du rail de droite. */
 export interface PaymentAlert {
   id: string;
+  studentId: string;
   studentName: string;
   amount: number;
   detail: string;

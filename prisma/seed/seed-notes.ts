@@ -40,7 +40,7 @@ const CONFIG = {
   // qui pilote ses notes et son assiduité sur tout son cursus.
   // → cohérence : un bon étudiant l'est partout, un décrocheur décroche.
   STUDENT_PROFILES: [
-    { value: 'excellent',  weight: 15, notes: [14, 19.5], assiduite: [90, 100], tauxEchec: 0.00, tauxAbandon: 0.00 },
+    { value: 'excellent',  weight: 15, notes: [14, 19.5], assiduite: [90, 99.9], tauxEchec: 0.00, tauxAbandon: 0.00 },
     { value: 'bon',        weight: 35, notes: [11, 16],   assiduite: [80, 98],  tauxEchec: 0.05, tauxAbandon: 0.02 },
     { value: 'moyen',      weight: 30, notes: [8, 13.5],  assiduite: [65, 90],  tauxEchec: 0.20, tauxAbandon: 0.05 },
     { value: 'fragile',    weight: 15, notes: [5, 11],    assiduite: [50, 80],  tauxEchec: 0.40, tauxAbandon: 0.10 },
@@ -66,6 +66,11 @@ const int = (range: number[]) => faker.number.int({ min: range[0], max: range[1]
 
 function noteFloat(range: number[]): number {
   return faker.number.float({ min: range[0], max: range[1], fractionDigits: 1 });
+}
+
+/** Decimal(4,2) en base : max 99.99 (100.00 provoque un overflow). */
+function capAttendanceRate(value: number): number {
+  return Math.min(99.99, Math.max(0, Number(value.toFixed(2))));
 }
 
 function mention(moyenne: number): string {
@@ -186,7 +191,7 @@ async function genererNotes() {
               academic_year:   year,
               status,
               final_grade:     finalGrade,
-              attendance_rate: Math.min(100, attendance),
+              attendance_rate: capAttendanceRate(attendance),
               enrollment_date: new Date(`${year.split('-')[0]}-09-15`),
             },
           });
