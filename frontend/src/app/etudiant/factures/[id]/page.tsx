@@ -26,30 +26,27 @@ export default function StudentInvoiceDetailPage() {
 
   if (invoice === undefined) {
     return (
-      <AppShell title="Detail facture" subtitle="Factures">
-        <p className="text-sm text-gray-600">Chargement...</p>
+      <AppShell title="Détail facture" subtitle="Factures">
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       </AppShell>
     );
   }
 
   if (invoice === null) {
     return (
-      <AppShell title="Detail facture" subtitle="Factures">
+      <AppShell title="Détail facture" subtitle="Factures">
         <p className="text-sm text-gray-600">Facture introuvable.</p>
         <Link
           href="/etudiant/factures"
           className="mt-3 inline-block text-sm text-amber-900 underline underline-offset-2 hover:text-amber-950"
         >
-          Retour a la liste
+          ← Retour à la liste
         </Link>
       </AppShell>
     );
   }
 
-  const total = invoice.lines.reduce(
-    (s, l) => s + l.quantity * l.unitPrice,
-    0,
-  );
+  const total = invoice.lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
 
   return (
     <AppShell title={`Facture ${invoice.reference}`} subtitle="Factures">
@@ -60,7 +57,7 @@ export default function StudentInvoiceDetailPage() {
         >
           ← Retour
         </Link>
-        <Button onClick={() => window.print()}>📄 Telecharger en PDF</Button>
+        <Button onClick={() => window.print()}>📄 Télécharger en PDF</Button>
       </div>
 
       <article className="rounded-lg border bg-white p-6 shadow-sm print:border-0 print:shadow-none">
@@ -77,19 +74,19 @@ export default function StudentInvoiceDetailPage() {
         </header>
 
         <dl className="mb-4 grid gap-3 text-sm sm:grid-cols-3">
-          <Field label="Emise le" value={formatDate(invoice.issuedAt)} />
-          <Field label="Echeance" value={formatDate(invoice.dueAt)} />
+          <Field label="Émise le" value={formatDate(invoice.issuedAt)} />
+          <Field label="Échéance" value={formatDate(invoice.dueAt)} />
           {invoice.paidAt && (
-            <Field label="Payee le" value={formatDate(invoice.paidAt)} />
+            <Field label="Payée le" value={formatDate(invoice.paidAt)} />
           )}
         </dl>
 
         <table aria-label="Lignes de la facture" className="min-w-full divide-y divide-gray-200 text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-gray-600">
-              <th scope="col" className="py-2">Libelle</th>
-              <th scope="col" className="py-2">Qte</th>
-              <th scope="col" className="py-2 text-right">PU</th>
+              <th scope="col" className="py-2">Libellé</th>
+              <th scope="col" className="py-2">Qté</th>
+              <th scope="col" className="py-2 text-right">P.U.</th>
               <th scope="col" className="py-2 text-right">Total</th>
             </tr>
           </thead>
@@ -98,9 +95,7 @@ export default function StudentInvoiceDetailPage() {
               <tr key={i}>
                 <td className="py-2 text-gray-900">{l.label}</td>
                 <td className="py-2 text-gray-700">{l.quantity}</td>
-                <td className="py-2 text-right text-gray-700">
-                  {formatEUR(l.unitPrice)}
-                </td>
+                <td className="py-2 text-right text-gray-700">{formatEUR(l.unitPrice)}</td>
                 <td className="py-2 text-right font-medium">
                   {formatEUR(l.quantity * l.unitPrice)}
                 </td>
@@ -120,7 +115,7 @@ export default function StudentInvoiceDetailPage() {
         </table>
 
         <p className="mt-6 text-xs text-gray-600">
-          Novacampus Alliance — Document genere pour usage interne.
+          Novacampus Alliance — Document généré pour usage interne.
         </p>
       </article>
     </AppShell>

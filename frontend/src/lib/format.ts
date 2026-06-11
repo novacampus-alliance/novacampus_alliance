@@ -27,7 +27,7 @@ export function formatPercent(value: number, digits = 0): string {
 }
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
-  PAID: 'Payee',
+  PAID: 'Payée',
   PENDING: 'En attente',
   OVERDUE: 'En retard',
 };
@@ -40,9 +40,9 @@ export const INVOICE_STATUS_BADGE: Record<InvoiceStatus, string> = {
 };
 
 export const COURSE_STATUS_LABEL: Record<CourseStatus, string> = {
-  VALIDE: 'Valide',
+  VALIDE: 'Validé',
   EN_COURS: 'En cours',
-  ECHEC: 'Echec',
+  ECHEC: 'Échec',
   RATTRAPAGE: 'Rattrapage',
 };
 

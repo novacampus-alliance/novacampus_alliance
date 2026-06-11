@@ -15,7 +15,7 @@ import type { Invoice, InvoiceStatus } from '@/lib/types';
 
 const FILTERS: { value: InvoiceStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'Toutes' },
-  { value: 'PAID', label: 'Payees' },
+  { value: 'PAID', label: 'Payées' },
   { value: 'PENDING', label: 'En attente' },
   { value: 'OVERDUE', label: 'En retard' },
 ];
@@ -47,8 +47,8 @@ export default function StudentInvoicesPage() {
   return (
     <AppShell title="Factures" subtitle="Suivi de vos paiements">
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <Summary label="Payees" value={formatEUR(totals.paid)} tone="ok" />
-        <Summary label="A regler" value={formatEUR(totals.pending)} tone="warn" />
+        <Summary label="Payées" value={formatEUR(totals.paid)} tone="ok" />
+        <Summary label="À régler" value={formatEUR(totals.pending)} tone="warn" />
         <Summary label="En retard" value={formatEUR(totals.overdue)} tone="bad" />
       </div>
 
@@ -69,17 +69,17 @@ export default function StudentInvoicesPage() {
         ))}
       </div>
 
-      {!invoices ? (
-        <p className="text-sm text-gray-600">Chargement...</p>
+      {invoices === null ? (
+        <p className="py-8 text-center text-sm text-gray-500">Chargement…</p>
       ) : (
         <Card className="overflow-x-auto">
           <table aria-label="Liste des factures" className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
               <tr>
-                <th scope="col" className="px-4 py-3">Reference</th>
+                <th scope="col" className="px-4 py-3">Référence</th>
                 <th scope="col" className="px-4 py-3">Description</th>
-                <th scope="col" className="px-4 py-3">Emise le</th>
-                <th scope="col" className="px-4 py-3">Echeance</th>
+                <th scope="col" className="px-4 py-3">Émise le</th>
+                <th scope="col" className="px-4 py-3">Échéance</th>
                 <th scope="col" className="px-4 py-3 text-right">Montant</th>
                 <th scope="col" className="px-4 py-3">Statut</th>
                 <th scope="col" className="px-4 py-3"></th>
@@ -109,14 +109,14 @@ export default function StudentInvoicesPage() {
                       href={`/etudiant/factures/${inv.id}`}
                       className="text-sm font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
                     >
-                      Detail
+                      Détail
                     </Link>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-600">
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
                     Aucune facture pour ce filtre.
                   </td>
                 </tr>

@@ -66,8 +66,7 @@ export default function StudentPlanningPage() {
         <div>
           <h2 className="text-xl font-semibold">Semaine en cours</h2>
           <p className="text-sm text-gray-600">
-            Mises a jour automatiques toutes les{' '}
-            {Math.round(POLL_MS / 1000)} secondes
+            Mises à jour automatiques toutes les {Math.round(POLL_MS / 1000)} secondes
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -75,7 +74,7 @@ export default function StudentPlanningPage() {
           En direct
           {lastUpdate && (
             <span className="ml-2">
-              Derniere maj : {lastUpdate.toLocaleTimeString('fr-FR')}
+              Dernière maj : {lastUpdate.toLocaleTimeString('fr-FR')}
             </span>
           )}
         </div>
@@ -86,10 +85,10 @@ export default function StudentPlanningPage() {
           role="status"
           className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
         >
-          <span aria-hidden className="mt-0.5 text-lg leading-none">!</span>
+          <span aria-hidden className="mt-0.5 text-lg leading-none">⚠</span>
           <span>
-            <strong>{changedSlotIds.size}</strong> changement(s) de salle detecte(s)
-            sur votre planning. Les creneaux concernes sont surlignes.
+            <strong>{changedSlotIds.size}</strong> changement(s) de salle détecté(s) sur
+            votre planning. Les créneaux concernés sont surlignés.
           </span>
         </div>
       )}
