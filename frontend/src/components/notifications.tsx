@@ -59,7 +59,9 @@ export function NotificationsBell({ role }: { role: UserRole }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchNotifications(role).then((list) => {
+    // Les notifications sont filtrées par utilisateur côté backend ; `role`
+    // ne sert qu'à rafraîchir lors d'un changement de portail (rôle DEMO).
+    fetchNotifications().then((list) => {
       const read = loadReadIds();
       setItems(list.map((n) => (read.has(n.id) ? { ...n, read: true } : n)));
     });

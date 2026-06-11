@@ -112,6 +112,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NOTIFICATION_SERVICE_URL: http://notification-service:3003
+      MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
       PORT: 3001
       NODE_ENV: production
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
