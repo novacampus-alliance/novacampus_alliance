@@ -199,6 +199,30 @@ interface ApiScheduleConflict {
   schedule_a: ApiScheduleSlot;
   schedule_b: ApiScheduleSlot;
   reason: string;
+  type: 'room' | 'instructor';
+}
+
+interface ApiAiSuggestion {
+  type: string;
+  target_schedule_id: string;
+  target_course_name: string | null;
+  proposed_room_id: string | null;
+  proposed_room_name: string | null;
+  proposed_day_of_week: number | null;
+  proposed_start_time: string | null;
+  proposed_end_time: string | null;
+  proposed_instructor_id: string | null;
+  proposed_instructor_name: string | null;
+  confidence: string;
+  impact: string;
+}
+
+interface ApiAiSuggestResponse {
+  provider: string;
+  model: string | null;
+  conflict_summary: string;
+  explanation: string;
+  suggestions: ApiAiSuggestion[];
 }
 
 interface ApiRoom {
@@ -550,6 +574,8 @@ export async function fetchConflicts(): Promise<ScheduleConflict[]> {
         id: `${a.schedule_id}-${c.schedule_b.schedule_id}`,
         severity: 'CRITICAL' as const,
         reason: c.reason,
+        conflictType: (c.type ?? 'room') as 'room' | 'instructor',
+        campusId: a.room?.campus_id ?? '',
         slots: [mapSchedule(a), mapSchedule(c.schedule_b)],
         suggestedRooms,
       };
@@ -664,6 +690,96 @@ export async function fetchPayments(): Promise<PaymentRow[]> {
       remindersSent: p.relances?.length ?? 0,
     };
   });
+}
+
+// ─── IA M7 — résolution de conflits EDT ─────────────────────────────────────
+
+export interface AiSuggestion {
+  type: 'change_room' | 'reschedule' | 'change_instructor';
+  targetScheduleId: string;
+  targetCourseName: string | null;
+  proposedRoomId: string | null;
+  proposedRoomName: string | null;
+  proposedDayOfWeek: number | null;
+  proposedStartTime: string | null;
+  proposedEndTime: string | null;
+  proposedInstructorId: string | null;
+  proposedInstructorName: string | null;
+  confidence: 'high' | 'medium' | 'low';
+  impact: string;
+}
+
+export interface AiConflictSuggestion {
+  provider: string;
+  model: string | null;
+  conflictSummary: string;
+  explanation: string;
+  suggestions: AiSuggestion[];
+}
+
+function mapAiSuggestion(s: ApiAiSuggestion): AiSuggestion {
+  return {
+    type: s.type as AiSuggestion['type'],
+    targetScheduleId: s.target_schedule_id,
+    targetCourseName: s.target_course_name,
+    proposedRoomId: s.proposed_room_id,
+    proposedRoomName: s.proposed_room_name,
+    proposedDayOfWeek: s.proposed_day_of_week,
+    proposedStartTime: s.proposed_start_time,
+    proposedEndTime: s.proposed_end_time,
+    proposedInstructorId: s.proposed_instructor_id,
+    proposedInstructorName: s.proposed_instructor_name,
+    confidence: s.confidence as AiSuggestion['confidence'],
+    impact: s.impact,
+  };
+}
+
+/**
+ * Appelle l'agent M7 pour un conflit précis — POST /api/v1/conflicts/suggest/auto.
+ * Le BFF relaie vers le gateway qui proxie vers l'ai-service.
+ */
+export async function callAiSuggestAuto(
+  campusId: string,
+  scheduleAId: string,
+  scheduleBId: string,
+): Promise<AiConflictSuggestion | null> {
+  const result = await apiSendJson<ApiAiSuggestResponse>(
+    'POST',
+    '/v1/conflicts/suggest/auto',
+    { campus_id: campusId, schedule_a_id: scheduleAId, schedule_b_id: scheduleBId },
+  );
+  if (!result.ok || !result.data) return null;
+  const d = result.data;
+  return {
+    provider: d.provider,
+    model: d.model,
+    conflictSummary: d.conflict_summary,
+    explanation: d.explanation,
+    suggestions: d.suggestions.map(mapAiSuggestion),
+  };
+}
+
+/**
+ * Applique la suggestion de l'IA — PUT /api/schedules/:id.
+ * Gère les trois types : change_room, reschedule, change_instructor.
+ */
+export async function applyAiSuggestion(
+  suggestion: AiSuggestion,
+): Promise<boolean> {
+  const payload: Record<string, unknown> = {};
+
+  if (suggestion.type === 'change_room' && suggestion.proposedRoomId) {
+    payload.room_id = suggestion.proposedRoomId;
+  } else if (suggestion.type === 'reschedule') {
+    if (suggestion.proposedDayOfWeek) payload.day_of_week = suggestion.proposedDayOfWeek;
+    if (suggestion.proposedStartTime) payload.start_time = suggestion.proposedStartTime.slice(0, 5);
+    if (suggestion.proposedEndTime) payload.end_time = suggestion.proposedEndTime.slice(0, 5);
+  } else if (suggestion.type === 'change_instructor' && suggestion.proposedInstructorId) {
+    payload.instructor_id = suggestion.proposedInstructorId;
+  }
+
+  if (Object.keys(payload).length === 0) return false;
+  return apiSend('PUT', `/schedules/${suggestion.targetScheduleId}`, payload);
 }
 
 /** Alertes de paiement — GET /api/paiements/en-retard. */

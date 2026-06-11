@@ -139,6 +139,8 @@ export interface ScheduleConflict {
   id: string;
   severity: ConflictSeverity;
   reason: string;
+  conflictType: 'room' | 'instructor';
+  campusId: string;
   slots: ScheduleSlot[];
   suggestedRooms: { roomId: string; roomName: string; capacity: number }[];
 }
