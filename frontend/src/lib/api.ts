@@ -6,6 +6,7 @@
  * n'est pas branche. Les types respectent les contrats reels.
  */
 
+import { UserRole } from './auth';
 import {
   MOCK_ADMIN_STUDENTS,
   MOCK_CONFLICTS,
@@ -13,23 +14,31 @@ import {
   MOCK_ENROLLED_STUDENTS,
   MOCK_GRADES,
   MOCK_INVOICES,
+  MOCK_NOTIFICATIONS,
   MOCK_PAYMENT_ALERTS,
   MOCK_PAYMENTS,
+  MOCK_ROOMS,
   MOCK_SCHEDULE,
+  MOCK_STUDENT_HISTORY,
   MOCK_TEACHER_COURSES,
+  MOCK_TEACHER_HISTORY,
   MOCK_TRANSCRIPT,
 } from './mock-data';
 import {
   AdminStudent,
+  AppNotification,
   CourseGrade,
   DashboardStudent,
   EnrolledStudent,
   Invoice,
   PaymentAlert,
   PaymentRow,
+  Room,
   ScheduleConflict,
   ScheduleSlot,
+  StudentHistory,
   TeacherCourse,
+  TeacherHistoryEntry,
   TranscriptEntry,
 } from './types';
 
@@ -85,6 +94,63 @@ export async function fetchTeacherCourse(id: string): Promise<TeacherCourse | nu
   return all.find((c) => c.id === id) ?? null;
 }
 
+export async function fetchRooms(): Promise<Room[]> {
+  return tryFetch('/api/rooms', MOCK_ROOMS);
+}
+
+export async function fetchTeacherHistory(): Promise<TeacherHistoryEntry[]> {
+  return tryFetch('/api/courses/instructor/me/history', MOCK_TEACHER_HISTORY);
+}
+
+export async function fetchStudentHistory(): Promise<StudentHistory[]> {
+  return tryFetch('/api/students/history/instructor/me', MOCK_STUDENT_HISTORY);
+}
+
+/**
+ * Creation/edition d'un cours par l'enseignant. POST/PATCH si l'API repond,
+ * succes simule sinon (meme convention que saveCourseGrades).
+ */
+export async function saveTeacherCourse(
+  payload: Omit<TeacherCourse, 'id' | 'enrolledCount' | 'successRate' | 'averageGrade'>,
+  mode: 'create' | 'edit',
+  id?: string,
+): Promise<{ ok: true }> {
+  try {
+    const res = await fetch(mode === 'create' ? '/api/courses' : `/api/courses/${id}`, {
+      method: mode === 'create' ? 'POST' : 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return { ok: true };
+  } catch {
+    /* ignore */
+  }
+  await new Promise((r) => setTimeout(r, 350));
+  return { ok: true };
+}
+
+/** Affecte une salle et des ressources pedagogiques a un cours. */
+export async function assignCourseRoom(
+  courseId: string,
+  roomId: string,
+  resources: string[],
+): Promise<{ ok: true }> {
+  try {
+    const res = await fetch(`/api/courses/${courseId}/room`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ roomId, resources }),
+    });
+    if (res.ok) return { ok: true };
+  } catch {
+    /* ignore */
+  }
+  await new Promise((r) => setTimeout(r, 350));
+  return { ok: true };
+}
+
 export async function fetchEnrolledStudents(_courseId: string): Promise<EnrolledStudent[]> {
   return tryFetch(`/api/enrollments/course/${_courseId}/students`, MOCK_ENROLLED_STUDENTS);
 }
@@ -108,6 +174,10 @@ export async function fetchDashboardStudents(): Promise<DashboardStudent[]> {
 
 export async function fetchPaymentAlerts(): Promise<PaymentAlert[]> {
   return tryFetch('/api/payments/alerts', MOCK_PAYMENT_ALERTS);
+}
+
+export async function fetchNotifications(role: UserRole): Promise<AppNotification[]> {
+  return tryFetch('/api/notifications/me', MOCK_NOTIFICATIONS[role]);
 }
 
 /**

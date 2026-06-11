@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
           onClick={sendAll}
           disabled={sentAll}
         >
-          {sentAll ? '✓ Relances envoyees' : '✉ Envoyer toutes les relances'}
+          {sentAll ? 'Relances envoyees' : 'Envoyer toutes les relances'}
         </Button>
       </Card>
 

@@ -8,8 +8,9 @@ import {
   PORTAL_BY_PREFIX,
   ROLE_SWITCHER,
 } from '@/lib/nav-config';
-import { Avatar } from '@/components/ui';
+import { Icon } from '@/components/icons';
 import { LogoMark } from '@/components/logo';
+import { NotificationsBell } from '@/components/notifications';
 
 interface AppShellProps {
   title: string;
@@ -59,19 +60,24 @@ export function AppShell({
 
   const sidebar = (
     <div data-dark="true" className="flex h-full flex-col bg-sidebar text-zinc-200">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5">
+      {/* Logo — renvoie a l'accueil du portail courant */}
+      <Link
+        href={portalPrefix}
+        onClick={() => setMobileOpen(false)}
+        aria-label={`NovaCampus — retour a l'accueil ${config.brandSub}`}
+        className="flex items-center gap-2.5 rounded-lg px-5 py-5 transition-colors hover:bg-sidebar-hover"
+      >
         <LogoMark className="h-9 w-9 shrink-0" />
-        <div className="leading-tight">
-          <div className="text-base font-extrabold tracking-tight">
+        <span className="leading-tight">
+          <span className="block text-base font-extrabold tracking-tight">
             <span className="text-brand-400">Nova</span>
             <span className="text-white">Campus</span>
-          </div>
-          <div className="text-[11px] uppercase tracking-widest text-sidebar-muted">
+          </span>
+          <span className="block text-[11px] uppercase tracking-widest text-sidebar-muted">
             {config.brandSub}
-          </div>
-        </div>
-      </div>
+          </span>
+        </span>
+      </Link>
 
       {/* Navigation */}
       <nav
@@ -100,9 +106,7 @@ export function AppShell({
                           : 'font-medium text-zinc-200 hover:bg-sidebar-hover hover:text-white'
                       }`}
                     >
-                      <span aria-hidden="true" className="text-base">
-                        {link.icon}
-                      </span>
+                      <Icon name={link.icon} className="h-5 w-5" />
                       <span className="flex-1">{link.label}</span>
                       {link.badge != null && (
                         <span
@@ -177,9 +181,7 @@ export function AppShell({
             {config.profile.subtitle}
           </span>
         </span>
-        <span aria-hidden="true" className="text-sidebar-muted">
-          ⏻
-        </span>
+        <Icon name="logout" className="h-5 w-5 text-sidebar-muted" />
       </button>
     </div>
   );
@@ -232,7 +234,7 @@ export function AppShell({
               aria-expanded={mobileOpen}
               aria-controls="nc-mobile-menu"
             >
-              <span aria-hidden="true">☰</span>
+              <Icon name="menu" className="h-5 w-5" />
             </button>
             <div className="min-w-0 flex-1">
               <h1 className="flex items-baseline gap-2 truncate">
@@ -247,30 +249,7 @@ export function AppShell({
               </h1>
             </div>
 
-            <div className="hidden items-center rounded-lg border border-gray-500 bg-white px-3 py-1.5 text-sm lg:flex">
-              <span aria-hidden="true" className="mr-2">
-                🔍
-              </span>
-              <input
-                type="search"
-                aria-label="Rechercher dans le portail"
-                placeholder="Rechercher..."
-                className="w-40 bg-transparent text-gray-900 outline-none placeholder:text-gray-600"
-              />
-            </div>
-
-            <button
-              className="relative flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-gray-500 p-2 text-gray-800 hover:bg-gray-100"
-              aria-label="Notifications — 1 non lue"
-            >
-              <span aria-hidden="true">🔔</span>
-              <span
-                aria-hidden="true"
-                className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-600"
-              />
-            </button>
-
-            <Avatar name={config.profile.name} />
+            <NotificationsBell role={config.role} />
           </div>
         </header>
 

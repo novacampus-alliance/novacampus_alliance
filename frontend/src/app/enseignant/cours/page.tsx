@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
+import { ButtonLink } from '@/components/ui';
 import { fetchTeacherCourses } from '@/lib/api';
 import { formatPercent } from '@/lib/format';
 import type { TeacherCourse } from '@/lib/types';
@@ -15,9 +16,16 @@ export default function TeacherCoursesPage() {
   }, []);
 
   return (
-    <AppShell title="Mes cours" subtitle="Cours attribues">
+    <AppShell
+      title="Mes cours"
+      subtitle="Cours attribues"
+      actions={
+        <ButtonLink href="/enseignant/cours/nouveau">+ Nouveau cours</ButtonLink>
+      }
+    >
       <p className="mb-4 text-sm text-gray-600">
-        Cliquez sur un cours pour gerer les notes et la presence.
+        Cliquez sur un cours pour gerer les notes, la presence, la salle et les
+        ressources.
       </p>
 
       {!courses ? (
@@ -46,6 +54,9 @@ export default function TeacherCoursesPage() {
                   value={formatPercent(c.successRate)}
                 />
                 <Stat label="Moyenne" value={c.averageGrade.toFixed(1)} />
+              </div>
+              <div className="mt-2 text-xs text-gray-600">
+                {c.roomName ? `Salle ${c.roomName}` : 'Salle non attribuee'}
               </div>
             </Link>
           ))}

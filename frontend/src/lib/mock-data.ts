@@ -4,17 +4,22 @@
  * reelle et retombe sur ces mocks si le backend n'est pas disponible.
  */
 
+import { UserRole } from './auth';
 import {
   AdminStudent,
+  AppNotification,
   CourseGrade,
   DashboardStudent,
   EnrolledStudent,
   Invoice,
   PaymentAlert,
   PaymentRow,
+  Room,
   ScheduleConflict,
   ScheduleSlot,
+  StudentHistory,
   TeacherCourse,
+  TeacherHistoryEntry,
   TranscriptEntry,
 } from './types';
 
@@ -331,6 +336,9 @@ export const MOCK_TEACHER_COURSES: TeacherCourse[] = [
     enrolledCount: 28,
     successRate: 0.82,
     averageGrade: 13.4,
+    roomId: 'r-a204',
+    roomName: 'A204',
+    resources: ['Videoprojecteur'],
   },
   {
     id: 'c-info-220',
@@ -341,6 +349,9 @@ export const MOCK_TEACHER_COURSES: TeacherCourse[] = [
     enrolledCount: 31,
     successRate: 0.74,
     averageGrade: 12.1,
+    roomId: 'r-b105',
+    roomName: 'B105',
+    resources: ['Videoprojecteur', 'Postes informatiques'],
   },
   {
     id: 'c-info-310',
@@ -351,6 +362,101 @@ export const MOCK_TEACHER_COURSES: TeacherCourse[] = [
     enrolledCount: 22,
     successRate: 0.68,
     averageGrade: 11.6,
+  },
+];
+
+export const MOCK_ROOMS: Room[] = [
+  { id: 'r-a204', name: 'A204', campus: 'Paris', capacity: 32, type: 'Salle TD', occupancy: 0.78 },
+  { id: 'r-a210', name: 'A210', campus: 'Paris', capacity: 32, type: 'Salle TD', occupancy: 0.45 },
+  { id: 'r-amph1', name: 'Amphi 1', campus: 'Paris', capacity: 120, type: 'Amphi', occupancy: 0.62 },
+  { id: 'r-b105', name: 'B105', campus: 'Paris', capacity: 28, type: 'Salle TP', occupancy: 0.9 },
+  { id: 'r-l1', name: 'Labo Info 1', campus: 'Lyon', capacity: 24, type: 'Labo', occupancy: 0.55 },
+  { id: 'r-c310', name: 'C310', campus: 'Lyon', capacity: 35, type: 'Salle TD', occupancy: 0.3 },
+  { id: 'r-t1', name: 'Hangar T1', campus: 'Toulouse', capacity: 40, type: 'Labo', occupancy: 0.48 },
+];
+
+export const MOCK_TEACHER_HISTORY: TeacherHistoryEntry[] = [
+  {
+    id: 'h-1',
+    semester: 'S4 2025-2026',
+    courseCode: 'INFO101',
+    courseName: 'Algorithmique avancee',
+    group: 'L3-INFO-A',
+    campus: 'Paris',
+    studentsCount: 26,
+    averageGrade: 12.8,
+    successRate: 0.81,
+  },
+  {
+    id: 'h-2',
+    semester: 'S4 2025-2026',
+    courseCode: 'INFO220',
+    courseName: 'Bases de donnees',
+    group: 'L3-INFO-B',
+    campus: 'Paris',
+    studentsCount: 29,
+    averageGrade: 11.9,
+    successRate: 0.72,
+  },
+  {
+    id: 'h-3',
+    semester: 'S3 2024-2025',
+    courseCode: 'INFO101',
+    courseName: 'Algorithmique avancee',
+    group: 'L3-INFO-A',
+    campus: 'Paris',
+    studentsCount: 30,
+    averageGrade: 13.1,
+    successRate: 0.84,
+  },
+  {
+    id: 'h-4',
+    semester: 'S3 2024-2025',
+    courseCode: 'INFO050',
+    courseName: 'Introduction informatique',
+    group: 'L1-INFO-C',
+    campus: 'Lyon',
+    studentsCount: 38,
+    averageGrade: 12.2,
+    successRate: 0.76,
+  },
+];
+
+export const MOCK_STUDENT_HISTORY: StudentHistory[] = [
+  {
+    id: 'st-1',
+    name: 'Alice Martin',
+    email: 'alice.martin@novacampus.fr',
+    courses: [
+      { semester: 'S5 2026', courseCode: 'INFO101', courseName: 'Algorithmique avancee', grade: 14, attendanceRate: 0.95 },
+      { semester: 'S4 2025-2026', courseCode: 'INFO220', courseName: 'Bases de donnees', grade: 13, attendanceRate: 0.9 },
+    ],
+  },
+  {
+    id: 'st-2',
+    name: 'Hugo Bernard',
+    email: 'hugo.bernard@novacampus.fr',
+    courses: [
+      { semester: 'S5 2026', courseCode: 'INFO101', courseName: 'Algorithmique avancee', grade: 11.5, attendanceRate: 0.82 },
+      { semester: 'S3 2024-2025', courseCode: 'INFO050', courseName: 'Introduction informatique', grade: 12, attendanceRate: 0.88 },
+    ],
+  },
+  {
+    id: 'st-3',
+    name: 'Lea Dubois',
+    email: 'lea.dubois@novacampus.fr',
+    courses: [
+      { semester: 'S5 2026', courseCode: 'INFO220', courseName: 'Bases de donnees', grade: null, attendanceRate: 0.79 },
+      { semester: 'S4 2025-2026', courseCode: 'INFO220', courseName: 'Bases de donnees', grade: 10.5, attendanceRate: 0.84 },
+    ],
+  },
+  {
+    id: 'st-4',
+    name: 'Karim Benali',
+    email: 'karim.benali@novacampus.fr',
+    courses: [
+      { semester: 'S4 2025-2026', courseCode: 'INFO101', courseName: 'Algorithmique avancee', grade: 15.5, attendanceRate: 0.97 },
+    ],
   },
 ];
 
@@ -581,3 +687,118 @@ export const MOCK_PAYMENTS: PaymentRow[] = [
     remindersSent: 0,
   },
 ];
+
+/**
+ * Notifications par role : chaque portail recoit des alertes alignees sur ses
+ * capacites (etudiant = changements/echeances, enseignant = saisies/salles,
+ * admin = paiements/conflits, direction = rapports/indicateurs).
+ */
+export const MOCK_NOTIFICATIONS: Record<UserRole, AppNotification[]> = {
+  STUDENT: [
+    {
+      id: 'n-s1',
+      kind: 'SCHEDULE',
+      title: 'Changement de salle',
+      detail: 'Bases de donnees (mercredi 9h) deplace en salle B210.',
+      date: isoAt(0, 8, 15),
+      href: '/etudiant/planning',
+      read: false,
+    },
+    {
+      id: 'n-s2',
+      kind: 'DEADLINE',
+      title: 'Echeance de paiement',
+      detail: 'Facture F-2026-00128 a regler avant le 30 juin.',
+      date: isoAt(-1, 17, 30),
+      href: '/etudiant/factures',
+      read: false,
+    },
+    {
+      id: 'n-s3',
+      kind: 'GRADE',
+      title: 'Note publiee',
+      detail: 'Votre note d’Algorithmique avancee est disponible.',
+      date: isoAt(-2, 11, 0),
+      href: '/etudiant/notes',
+      read: true,
+    },
+  ],
+  INSTRUCTOR: [
+    {
+      id: 'n-t1',
+      kind: 'SCHEDULE',
+      title: 'Salle attribuee',
+      detail: 'Salle C310 confirmee pour Anglais professionnel (jeudi 10h).',
+      date: isoAt(0, 7, 45),
+      href: '/enseignant/planning',
+      read: false,
+    },
+    {
+      id: 'n-t2',
+      kind: 'DEADLINE',
+      title: 'Saisie des notes attendue',
+      detail: 'Les notes de Bases de donnees sont attendues avant vendredi.',
+      date: isoAt(-1, 9, 0),
+      href: '/enseignant/cours',
+      read: false,
+    },
+    {
+      id: 'n-t3',
+      kind: 'SCHEDULE',
+      title: 'Emploi du temps mis a jour',
+      detail: 'Votre creneau du lundi 14h est deplace en salle B105.',
+      date: isoAt(-3, 16, 20),
+      href: '/enseignant/planning',
+      read: true,
+    },
+  ],
+  ADMIN: [
+    {
+      id: 'n-a1',
+      kind: 'CONFLICT',
+      title: 'Conflit de salle detecte',
+      detail: 'Deux cours reserves en A204 mercredi 9h. Resolution requise.',
+      date: isoAt(0, 8, 0),
+      href: '/admin/conflits',
+      read: false,
+    },
+    {
+      id: 'n-a2',
+      kind: 'PAYMENT',
+      title: 'Paiements en retard',
+      detail: '3 factures depassent 30 jours de retard. Relances a envoyer.',
+      date: isoAt(-1, 10, 30),
+      href: '/admin/paiements',
+      read: false,
+    },
+    {
+      id: 'n-a3',
+      kind: 'REPORT',
+      title: 'Nouvelles inscriptions',
+      detail: '12 dossiers d’inscription recus cette semaine a valider.',
+      date: isoAt(-2, 14, 10),
+      href: '/admin/inscriptions',
+      read: true,
+    },
+  ],
+  DIRECTION: [
+    {
+      id: 'n-d1',
+      kind: 'REPORT',
+      title: 'Rapport mensuel disponible',
+      detail: 'Indicateurs de mai consolides pour les trois campus.',
+      date: isoAt(0, 9, 0),
+      href: '/direction',
+      read: false,
+    },
+    {
+      id: 'n-d2',
+      kind: 'REPORT',
+      title: 'Occupation des salles',
+      detail: 'Taux d’occupation de Lyon en hausse de 6 points ce mois.',
+      date: isoAt(-2, 14, 0),
+      href: '/direction',
+      read: true,
+    },
+  ],
+};

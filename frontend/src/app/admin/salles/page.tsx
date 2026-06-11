@@ -1,38 +1,26 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Card, StatCard, StatusPill } from '@/components/ui';
+import { fetchRooms } from '@/lib/api';
 import { formatPercent } from '@/lib/format';
-
-interface Room {
-  id: string;
-  name: string;
-  campus: string;
-  capacity: number;
-  type: 'Amphi' | 'Salle TD' | 'Salle TP' | 'Labo';
-  occupancy: number; // 0..1 sur la semaine
-}
-
-const ROOMS: Room[] = [
-  { id: 'r-a204', name: 'A204', campus: 'Paris', capacity: 32, type: 'Salle TD', occupancy: 0.78 },
-  { id: 'r-a210', name: 'A210', campus: 'Paris', capacity: 32, type: 'Salle TD', occupancy: 0.45 },
-  { id: 'r-amph1', name: 'Amphi 1', campus: 'Paris', capacity: 120, type: 'Amphi', occupancy: 0.62 },
-  { id: 'r-b105', name: 'B105', campus: 'Paris', capacity: 28, type: 'Salle TP', occupancy: 0.9 },
-  { id: 'r-l1', name: 'Labo Info 1', campus: 'Lyon', capacity: 24, type: 'Labo', occupancy: 0.55 },
-  { id: 'r-c310', name: 'C310', campus: 'Lyon', capacity: 35, type: 'Salle TD', occupancy: 0.3 },
-  { id: 'r-t1', name: 'Hangar T1', campus: 'Toulouse', capacity: 40, type: 'Labo', occupancy: 0.48 },
-];
+import type { Room } from '@/lib/types';
 
 export default function AdminRoomsPage() {
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [campus, setCampus] = useState('ALL');
 
+  useEffect(() => {
+    fetchRooms().then(setRooms);
+  }, []);
+
   const campuses = useMemo(
-    () => Array.from(new Set(ROOMS.map((r) => r.campus))).sort(),
-    [],
+    () => Array.from(new Set(rooms.map((r) => r.campus))).sort(),
+    [rooms],
   );
 
-  const filtered = ROOMS.filter((r) => campus === 'ALL' || r.campus === campus);
+  const filtered = rooms.filter((r) => campus === 'ALL' || r.campus === campus);
   const totalCapacity = filtered.reduce((s, r) => s + r.capacity, 0);
   const avgOccupancy = filtered.length
     ? filtered.reduce((s, r) => s + r.occupancy, 0) / filtered.length

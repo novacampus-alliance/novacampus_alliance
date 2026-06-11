@@ -80,6 +80,47 @@ export interface TeacherCourse {
   enrolledCount: number;
   successRate: number;
   averageGrade: number;
+  /** Salle attribuee au cours (modifiable par l'enseignant). */
+  roomId?: string;
+  roomName?: string;
+  /** Ressources pedagogiques affectees (videoprojecteur, postes, etc.). */
+  resources?: string[];
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  campus: string;
+  capacity: number;
+  type: 'Amphi' | 'Salle TD' | 'Salle TP' | 'Labo';
+  occupancy: number; // 0..1 sur la semaine
+}
+
+/** Session passee d'un cours (historique des classes de l'enseignant). */
+export interface TeacherHistoryEntry {
+  id: string;
+  semester: string;
+  courseCode: string;
+  courseName: string;
+  group: string;
+  campus: string;
+  studentsCount: number;
+  averageGrade: number;
+  successRate: number;
+}
+
+/** Parcours d'un etudiant aupres de l'enseignant (historique etudiants). */
+export interface StudentHistory {
+  id: string;
+  name: string;
+  email: string;
+  courses: {
+    semester: string;
+    courseCode: string;
+    courseName: string;
+    grade: number | null;
+    attendanceRate: number;
+  }[];
 }
 
 export interface AdminStudent {
@@ -133,4 +174,25 @@ export interface PaymentAlert {
   amount: number;
   detail: string;
   reminderLevel: number;
+}
+
+/** Categorie d'une notification (icone + sens metier). */
+export type NotificationKind =
+  | 'SCHEDULE'  // changement d'emploi du temps / de salle
+  | 'DEADLINE'  // echeance (paiement, rendu, saisie)
+  | 'GRADE'     // note publiee ou a saisir
+  | 'PAYMENT'   // paiement, relance
+  | 'CONFLICT'  // conflit de salle ou de planning
+  | 'REPORT';   // rapport ou indicateur disponible
+
+/** Notification affichee dans le panneau de la cloche (header). */
+export interface AppNotification {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  detail: string;
+  date: string; // ISO
+  /** Page ouverte quand on active la notification. */
+  href?: string;
+  read: boolean;
 }
