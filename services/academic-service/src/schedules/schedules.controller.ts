@@ -73,7 +73,6 @@ export class SchedulesController {
   @ApiParam({ name: 'id', description: 'ID du créneau', example: 'SCH001' })
   @ApiResponse({ status: 200, description: 'Créneau mis à jour.' })
   @ApiResponse({ status: 404, description: 'Créneau introuvable.' })
-  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateScheduleDto) {
     return this.schedulesService.update(id, dto);
   }
