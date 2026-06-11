@@ -801,4 +801,7 @@ export const MOCK_NOTIFICATIONS: Record<UserRole, AppNotification[]> = {
       read: true,
     },
   ],
+  // Le rôle DEMO navigue dans tous les portails : la cloche reçoit le rôle du
+  // portail courant, cette entrée ne sert que de filet de sécurité.
+  DEMO: [],
 };

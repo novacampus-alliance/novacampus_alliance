@@ -33,6 +33,14 @@ export function AppShell({
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // La bascule de portail est réservée au rôle DEMO (accès à tous les
+  // portails). Le rôle est lu depuis le cookie non-httpOnly `user_role`
+  // posé au login — purement cosmétique : le middleware (JWT) fait foi.
+  const [isDemo, setIsDemo] = useState(false);
+  useEffect(() => {
+    setIsDemo(/(?:^|;\s*)user_role=DEMO(?:;|$)/.test(document.cookie));
+  }, []);
+
   const config = configForPath(pathname);
   const portalPrefix =
     PORTAL_BY_PREFIX.find((p) => p.config.role === config.role)?.prefix ?? '/';
@@ -129,32 +137,34 @@ export function AppShell({
         ))}
       </nav>
 
-      {/* Bascule de portail */}
-      <nav
-        aria-label="Changer de portail"
-        className="border-t border-sidebar-border px-3 py-3"
-      >
-        <div className="grid grid-cols-4 gap-1 rounded-lg bg-zinc-800/60 p-1">
-          {ROLE_SWITCHER.map((r) => {
-            const current = r.role === config.role;
-            return (
-              <Link
-                key={r.role}
-                href={r.href}
-                onClick={() => setMobileOpen(false)}
-                aria-current={current ? 'true' : undefined}
-                className={`rounded-md px-1 py-1.5 text-center text-[11px] font-semibold transition-colors ${
-                  current
-                    ? 'bg-brand-400 text-zinc-950'
-                    : 'text-zinc-300 hover:text-white'
-                }`}
-              >
-                {r.label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {/* Bascule de portail — visible uniquement pour le rôle DEMO */}
+      {isDemo && (
+        <nav
+          aria-label="Changer de portail"
+          className="border-t border-sidebar-border px-3 py-3"
+        >
+          <div className="grid grid-cols-4 gap-1 rounded-lg bg-zinc-800/60 p-1">
+            {ROLE_SWITCHER.map((r) => {
+              const current = r.role === config.role;
+              return (
+                <Link
+                  key={r.role}
+                  href={r.href}
+                  onClick={() => setMobileOpen(false)}
+                  aria-current={current ? 'true' : undefined}
+                  className={`rounded-md px-1 py-1.5 text-center text-[11px] font-semibold transition-colors ${
+                    current
+                      ? 'bg-brand-400 text-zinc-950'
+                      : 'text-zinc-300 hover:text-white'
+                  }`}
+                >
+                  {r.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {/* Profil / deconnexion */}
       <button

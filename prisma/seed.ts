@@ -35,6 +35,13 @@ const users = [
     first_name: 'Pierre',
     last_name: 'Leroy',
   },
+  {
+    // Compte de démonstration : accès à tous les portails (voir RolesGuard)
+    email: 'demo@novacampus.fr',
+    role: Role.DEMO,
+    first_name: 'Demo',
+    last_name: 'NovaCampus',
+  },
 ];
 
 async function main() {
@@ -61,7 +68,7 @@ async function main() {
     });
   }
 
-  console.log('Seed termine — 4 utilisateurs de test crees');
+  console.log(`Seed termine — ${users.length} utilisateurs de test crees`);
   console.log(`Mot de passe commun : ${TEST_PASSWORD}`);
 }
 
