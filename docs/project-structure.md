@@ -196,7 +196,7 @@ novacampus_alliance/
 | **Académique** | `services/academic-service/` | 3002 | Auth, campus, programmes, cours, EDT, notes, inscriptions |
 | **Facturation** | `services/billing-service/` | 3003 | Paiements, factures, échéanciers, relances manuelles |
 | **Notification** | `services/notification-service/` | 3004 | Alertes in-app, emails, SMS, push |
-| **IA** | `ai-service/` | 8000 | Agent relance financière (LangChain) |
+| **IA** | `ai-service/` | 8000 | Agent résolution conflits EDT (LangChain / Groq) — [guide](./m7-agent-conflits-edt.md) |
 | **Présentation** | `frontend/` | 3000 | Portails IHM, middleware JWT, BFF auth |
 
 ---

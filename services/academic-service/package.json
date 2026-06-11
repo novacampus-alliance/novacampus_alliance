@@ -11,7 +11,8 @@
     "start:prod": "node dist/main.js",
     "prisma:generate": "prisma generate --schema=../../prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=../../prisma/schema.prisma",
-    "prisma:seed": "prisma db seed --schema=../../prisma/schema.prisma"
+    "prisma:seed": "prisma db seed --schema=../../prisma/schema.prisma",
+    "prisma:seed:m7-conflict": "ts-node --project scripts/tsconfig.json scripts/seed-m7-edt-conflict.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

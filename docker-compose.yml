@@ -7,7 +7,7 @@ services:
     container_name: novacampus_postgres
     restart: unless-stopped
     expose:
-      - ${POSTGRES_PORT:-5432}
+      - "${POSTGRES_PORT:-5432}"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -53,7 +53,7 @@ services:
     container_name: novacampus_redis
     restart: unless-stopped
     expose:
-      - ${REDIS_PORT:-6379}
+      - "${REDIS_PORT:-6379}"
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}
@@ -199,7 +199,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://gateway:3000}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
     container_name: novacampus_frontend
     restart: unless-stopped
@@ -207,7 +207,7 @@ services:
       - "3000"
     environment:
       JWT_SECRET: ${JWT_SECRET}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://gateway:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
       NODE_ENV: production
     depends_on:
@@ -233,7 +233,7 @@ services:
       - novacampus_network
 
   # ─────────────────────────────────────────
-  # Svc IA — FastAPI (agent de relance)
+  # Svc IA — FastAPI (agent résolution conflits EDT)
   # ─────────────────────────────────────────
   ai-service:
     build:
@@ -246,15 +246,19 @@ services:
     environment:
       DEBUG: ${AI_DEBUG:-false}
       PORT: 8000
+      LLM_PROVIDER: ${LLM_PROVIDER:-template}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
       MONGODB_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017
       MONGODB_DB: ${AI_MONGODB_DB:-novacampus_ai}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       BACKEND_URL: http://gateway:3000
+      JWT_SECRET: ${JWT_SECRET:-change_me_with_a_strong_secret}
       ALLOWED_ORIGINS: '["http://localhost","http://localhost:8080"]'
-      ESCALADE_SEUIL_JOURS: ${ESCALADE_SEUIL_JOURS:-30}
-      ESCALADE_SEUIL_RELANCES: ${ESCALADE_SEUIL_RELANCES:-3}
     depends_on:
       gateway:
         condition: service_started
