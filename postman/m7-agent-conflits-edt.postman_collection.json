@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Novacampus — M7 Agent IA Conflits EDT",
-    "description": "Test agent IA conflits EDT (salle + enseignant).\n\nAvant l'orchestration, exécuter une fois :\n  cd services/academic-service\n  npm run prisma:seed:m7-conflict\n\nModes :\n- MVP manuel : POST /suggest (type room | instructor)\n- Orchestration : POST /suggest/auto | /suggest/batch\n\nDétection conflits : voir issue-17-conflicts.postman_collection.json\n\nbase_url Docker : http://localhost",
+    "description": "Test agent IA conflits EDT (salle + enseignant).\n\nORDRE OBLIGATOIRE : lancer d'abord « 0 — Auth › Login (admin) » (remplit {{token}}).\n\nSeed conflits (une fois) :\n  cd services/academic-service && npm run prisma:seed:m7-conflict\n\nbase_url Docker : http://localhost",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -22,9 +22,11 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "  pm.collectionVariables.set('token', pm.response.json().access_token);",
-                  "}"
+                  "pm.test('Login OK', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const data = pm.response.json();",
+                  "const token = data.access_token;",
+                  "pm.test('Token JWT présent', () => pm.expect(token, 'access_token manquant — rebuild frontend').to.be.a('string').and.not.empty);",
+                  "if (token) pm.collectionVariables.set('token', token);"
                 ],
                 "type": "text/javascript"
               }
@@ -81,6 +83,17 @@
         {
           "name": "GET — Campus",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('token')) {",
+                  "  throw new Error('Token vide — exécutez d\\'abord 0 — Auth › Login (admin)');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
             {
               "listen": "test",
               "script": {
