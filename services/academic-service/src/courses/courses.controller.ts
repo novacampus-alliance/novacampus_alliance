@@ -37,13 +37,13 @@ export class CoursesController {
   }
 
   @Post()
-  @Roles(Role.ADMIN, Role.DIRECTION)
+  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
   create(@Body() dto: CreateCourseDto) {
     return this.coursesService.create(dto);
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.DIRECTION)
+  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
   update(@Param('id') id: string, @Body() dto: UpdateCourseDto) {
     return this.coursesService.update(id, dto);
   }
