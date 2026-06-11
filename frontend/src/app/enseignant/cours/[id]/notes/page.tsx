@@ -179,7 +179,7 @@ export default function TeacherGradesEntryPage() {
           </Card>
 
           {error && (
-            <p role="alert" className="mt-3 text-sm text-red-600">
+            <p role="alert" className="mt-3 text-sm font-medium text-red-800">
               {error}
             </p>
           )}

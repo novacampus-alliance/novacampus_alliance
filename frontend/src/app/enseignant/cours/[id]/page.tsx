@@ -4,13 +4,17 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
-import { Avatar, ButtonLink, Card, StatCard } from '@/components/ui';
+import { Icon } from '@/components/icons';
+import { Avatar, Button, ButtonLink, Card, StatCard } from '@/components/ui';
 import {
+  assignCourseRoom,
   fetchEnrolledStudents,
+  fetchRooms,
   fetchTeacherCourse,
 } from '@/lib/api';
 import { formatPercent } from '@/lib/format';
-import type { EnrolledStudent, TeacherCourse } from '@/lib/types';
+import type { EnrolledStudent, Room, TeacherCourse } from '@/lib/types';
+import { TEACHING_RESOURCES } from '../course-form';
 
 export default function TeacherCourseDetailPage() {
   const params = useParams<{ id: string }>();
@@ -49,9 +53,17 @@ export default function TeacherCourseDetailPage() {
         >
           ← Mes cours
         </Link>
-        <ButtonLink href={`/enseignant/cours/${course.id}/notes`}>
-          ✏️ Saisir notes & presence
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink
+            variant="secondary"
+            href={`/enseignant/cours/${course.id}/modifier`}
+          >
+            Modifier le cours
+          </ButtonLink>
+          <ButtonLink href={`/enseignant/cours/${course.id}/notes`}>
+            <Icon name="notes" className="h-4 w-4" /> Saisir notes & presence
+          </ButtonLink>
+        </div>
       </div>
 
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
@@ -64,7 +76,9 @@ export default function TeacherCourseDetailPage() {
         <StatCard label="Moyenne du cours" value={course.averageGrade.toFixed(2)} />
       </section>
 
-      <section>
+      <RoomResourcesPanel course={course} />
+
+      <section className="mt-6">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">
           Etudiants inscrits
         </h3>
@@ -107,5 +121,114 @@ export default function TeacherCourseDetailPage() {
         )}
       </section>
     </AppShell>
+  );
+}
+
+/**
+ * Affectation de la salle et des ressources pedagogiques du cours,
+ * directement depuis la fiche (sans repasser par le formulaire complet).
+ */
+function RoomResourcesPanel({ course }: { course: TeacherCourse }) {
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [roomId, setRoomId] = useState(course.roomId ?? '');
+  const [resources, setResources] = useState<string[]>(course.resources ?? []);
+  const [saving, setSaving] = useState(false);
+  const [confirm, setConfirm] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRooms().then(setRooms);
+  }, []);
+
+  const campusRooms = rooms.filter((r) => r.campus === course.campus);
+
+  function toggleResource(label: string) {
+    setResources((prev) =>
+      prev.includes(label) ? prev.filter((x) => x !== label) : [...prev, label],
+    );
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setConfirm(null);
+    try {
+      await assignCourseRoom(course.id, roomId, resources);
+      const room = rooms.find((r) => r.id === roomId);
+      setConfirm(
+        room
+          ? `Salle ${room.name} et ressources enregistrees.`
+          : 'Ressources enregistrees (aucune salle attribuee).',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section aria-label="Salle et ressources pedagogiques">
+      <h3 className="mb-2 text-sm font-semibold text-gray-700">
+        Salle & ressources pedagogiques
+      </h3>
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block min-w-56">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-600">
+              Salle ({course.campus})
+            </span>
+            <select
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+              className="w-full min-h-11 rounded-md border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
+            >
+              <option value="">Aucune salle attribuee</option>
+              {campusRooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} · {r.type} · cap. {r.capacity}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </Button>
+        </div>
+
+        <fieldset className="mt-4">
+          <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-600">
+            Ressources affectees
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {TEACHING_RESOURCES.map((r) => {
+              const active = resources.includes(r);
+              return (
+                <label
+                  key={r}
+                  className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+                    active
+                      ? 'border-amber-700 bg-brand-50 font-medium text-gray-900'
+                      : 'border-gray-500 bg-white text-gray-800'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={() => toggleResource(r)}
+                  />
+                  <span>{r}</span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        {confirm && (
+          <p
+            role="status"
+            className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+          >
+            {confirm}
+          </p>
+        )}
+      </Card>
+    </section>
   );
 }

@@ -34,8 +34,12 @@ function LoginForm() {
         return;
       }
 
-      const redirect = searchParams.get('redirect') ?? data.redirectTo;
-      router.push(redirect);
+      // Seuls les chemins internes sont acceptes : un lien forge du type
+      // /login?redirect=https://evil.com ne doit pas sortir du site.
+      const requested = searchParams.get('redirect');
+      const isInternalPath =
+        requested?.startsWith('/') && !requested.startsWith('//');
+      router.push((isInternalPath ? requested : data.redirectTo) ?? '/');
       router.refresh();
     } catch {
       setError('Impossible de contacter le serveur');
@@ -76,7 +80,7 @@ function LoginForm() {
       </div>
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm font-medium text-red-800" role="alert">
           {error}
         </p>
       )}
@@ -84,7 +88,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-brand-400 py-2 text-sm font-semibold text-zinc-900 hover:bg-brand-300 disabled:opacity-50"
+        className="w-full min-h-11 rounded-lg border border-brand-700 bg-brand-400 py-2 text-sm font-semibold text-zinc-950 hover:bg-brand-300 disabled:opacity-50"
       >
         {loading ? 'Connexion...' : 'Se connecter'}
       </button>
@@ -97,7 +101,9 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md rounded-xl border bg-white p-8 shadow-sm">
         <LogoFull className="mb-4 h-12 w-auto" />
-        <p className="mb-6 text-sm text-gray-600">Connexion a votre portail</p>
+        <h1 className="mb-6 text-sm font-normal text-gray-600">
+          Connexion a votre portail
+        </h1>
 
         <Suspense fallback={<p className="text-sm text-gray-600">Chargement...</p>}>
           <LoginForm />

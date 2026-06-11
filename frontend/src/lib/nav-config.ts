@@ -4,11 +4,12 @@
  */
 
 import { UserRole } from './auth';
+import type { IconName } from '@/components/icons';
 
 export interface NavLink {
   href: string;
   label: string;
-  icon: string; // emoji simple pour rester sans dependance d'icones
+  icon: IconName; // picto du jeu d'icones NovaCampus (components/icons.tsx)
   badge?: number;
 }
 
@@ -33,16 +34,16 @@ export const STUDENT_CONFIG: PortalConfig = {
   groups: [
     {
       links: [
-        { href: '/etudiant', label: 'Tableau de bord', icon: '🏠' },
-        { href: '/etudiant/planning', label: 'Emploi du temps', icon: '🗓️' },
+        { href: '/etudiant', label: 'Tableau de bord', icon: 'dashboard' },
+        { href: '/etudiant/planning', label: 'Emploi du temps', icon: 'schedule' },
       ],
     },
     {
       title: 'Scolarite',
       links: [
-        { href: '/etudiant/notes', label: 'Notes', icon: '📊' },
-        { href: '/etudiant/releve', label: 'Releve', icon: '📄' },
-        { href: '/etudiant/factures', label: 'Factures', icon: '💳' },
+        { href: '/etudiant/notes', label: 'Notes', icon: 'notes' },
+        { href: '/etudiant/releve', label: 'Releve', icon: 'transcript' },
+        { href: '/etudiant/factures', label: 'Factures', icon: 'invoices' },
       ],
     },
   ],
@@ -56,9 +57,15 @@ export const TEACHER_CONFIG: PortalConfig = {
   groups: [
     {
       links: [
-        { href: '/enseignant', label: 'Tableau de bord', icon: '🏠' },
-        { href: '/enseignant/cours', label: 'Mes cours', icon: '📚' },
-        { href: '/enseignant/planning', label: 'Emploi du temps', icon: '🗓️' },
+        { href: '/enseignant', label: 'Tableau de bord', icon: 'dashboard' },
+        { href: '/enseignant/cours', label: 'Mes cours', icon: 'courses' },
+        { href: '/enseignant/planning', label: 'Emploi du temps', icon: 'schedule' },
+      ],
+    },
+    {
+      title: 'Suivi',
+      links: [
+        { href: '/enseignant/historique', label: 'Historique', icon: 'history' },
       ],
     },
   ],
@@ -73,18 +80,18 @@ export const ADMIN_CONFIG: PortalConfig = {
     {
       title: 'Gestion',
       links: [
-        { href: '/admin', label: 'Tableau de bord', icon: '📈' },
-        { href: '/admin/etudiants', label: 'Etudiants', icon: '🎓' },
-        { href: '/admin/inscriptions', label: 'Inscriptions', icon: '📝' },
-        { href: '/admin/paiements', label: 'Paiements', icon: '💳', badge: 3 },
+        { href: '/admin', label: 'Tableau de bord', icon: 'kpi' },
+        { href: '/admin/etudiants', label: 'Etudiants', icon: 'students' },
+        { href: '/admin/inscriptions', label: 'Inscriptions', icon: 'enrollments' },
+        { href: '/admin/paiements', label: 'Paiements', icon: 'payments', badge: 3 },
       ],
     },
     {
       title: 'Planning',
       links: [
-        { href: '/admin/plannings', label: 'Emplois du temps', icon: '🗓️' },
-        { href: '/admin/salles', label: 'Gestion des salles', icon: '🏛️' },
-        { href: '/admin/conflits', label: 'Conflits', icon: '⚠️', badge: 1 },
+        { href: '/admin/plannings', label: 'Emplois du temps', icon: 'schedule' },
+        { href: '/admin/salles', label: 'Gestion des salles', icon: 'rooms' },
+        { href: '/admin/conflits', label: 'Conflits', icon: 'conflicts', badge: 1 },
       ],
     },
   ],
@@ -98,7 +105,7 @@ export const DIRECTION_CONFIG: PortalConfig = {
   groups: [
     {
       links: [
-        { href: '/direction', label: 'Tableau de bord', icon: '📈' },
+        { href: '/direction', label: 'Tableau de bord', icon: 'kpi' },
       ],
     },
   ],

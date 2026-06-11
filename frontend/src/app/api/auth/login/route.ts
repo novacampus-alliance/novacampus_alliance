@@ -14,14 +14,24 @@ const API_URL = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL 
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  // 1. Transmettre email + password au gateway → svc académique
-  const backendRes = await fetch(`${API_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  const data = await backendRes.json();
+  // 1. Transmettre email + password au gateway → svc académique.
+  // Gateway injoignable ou réponse illisible → 502 JSON propre plutôt
+  // qu'une 500 HTML que le client ne saurait pas parser.
+  let backendRes: Response;
+  let data: { user?: { role?: string }; access_token?: string; message?: string };
+  try {
+    backendRes = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    data = await backendRes.json();
+  } catch {
+    return NextResponse.json(
+      { message: 'Service d’authentification injoignable' },
+      { status: 502 },
+    );
+  }
 
   // 2. Si l'API refuse (mauvais identifiants) → renvoyer l'erreur au frontend
   if (!backendRes.ok) {
@@ -29,7 +39,13 @@ export async function POST(request: NextRequest) {
   }
 
   // 3. Déterminer vers quel portail rediriger selon le rôle
-  const role = data.user.role as UserRole;
+  const role = data.user?.role as UserRole | undefined;
+  if (!role || !data.access_token) {
+    return NextResponse.json(
+      { message: 'Réponse du service d’authentification invalide' },
+      { status: 502 },
+    );
+  }
   const redirectTo = ROLE_HOME_PATH[role] ?? '/';
 
   // 4. Poser le JWT dans un cookie httpOnly
