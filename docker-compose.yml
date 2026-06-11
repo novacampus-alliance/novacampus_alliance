@@ -199,7 +199,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://gateway:3000}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
     container_name: novacampus_frontend
     restart: unless-stopped
@@ -207,7 +207,7 @@ services:
       - "3000"
     environment:
       JWT_SECRET: ${JWT_SECRET}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://gateway:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
       NODE_ENV: production
     depends_on:

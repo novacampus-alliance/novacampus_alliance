@@ -6,7 +6,7 @@ COPY services/gateway/package.json services/gateway/package-lock.json* ./
 RUN npm install
 
 COPY services/gateway/ ./
-RUN npm run build
+RUN rm -f tsconfig.tsbuildinfo && npm run build
 
 FROM node:20-alpine AS runner
 
