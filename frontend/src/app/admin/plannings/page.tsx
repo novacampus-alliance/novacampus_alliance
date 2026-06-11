@@ -4,18 +4,75 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button, Card } from '@/components/ui';
 import { WeekCalendar } from '@/components/week-calendar';
-import { fetchAdminSchedule, fetchConflicts } from '@/lib/api';
+import Link from 'next/link';
+import {
+  createSchedule,
+  fetchAdminSchedule,
+  fetchConflicts,
+  fetchCourses,
+  fetchInstructors,
+  fetchRooms,
+  updateSchedule,
+} from '@/lib/api';
 import { formatDate, formatTime } from '@/lib/format';
 import type { ScheduleConflict, ScheduleSlot } from '@/lib/types';
 
 type SlotDraft = {
-  courseName: string;
-  instructorName: string;
-  roomName: string;
-  campus: string;
+  courseId: string;
+  instructorId: string;
+  roomId: string;
   startsAt: string;
   endsAt: string;
 };
+
+function isoToScheduleFields(iso: string): { dayOfWeek: number; time: string } {
+  const d = new Date(iso);
+  const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return { dayOfWeek, time };
+}
+
+function ConflictsBanner({ conflicts }: { conflicts: ScheduleConflict[] }) {
+  const byCampus = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of conflicts) {
+      const name = c.campusName || 'Campus inconnu';
+      map.set(name, (map.get(name) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [conflicts]);
+
+  return (
+    <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-red-800">
+          ⚠ {conflicts.length} conflit{conflicts.length > 1 ? 's' : ''} détecté{conflicts.length > 1 ? 's' : ''} sur {byCampus.length} campus
+        </span>
+        <Link
+          href="/admin/conflits"
+          className="shrink-0 text-xs font-semibold text-red-700 underline underline-offset-2 hover:text-red-900"
+        >
+          Résoudre avec l&apos;agent M7 →
+        </Link>
+      </div>
+      <ul className="flex flex-wrap gap-2">
+        {byCampus.map(([name, count]) => (
+          <li key={name}>
+            <Link
+              href={`/admin/conflits?campus=${encodeURIComponent(name)}`}
+              className="flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-2.5 py-1 text-xs text-red-700 hover:bg-red-100 transition-colors"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              <span className="font-medium">{count} conflit{count > 1 ? 's' : ''}</span>
+              <span className="text-red-500">·</span>
+              <span>{name}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function AdminPlanningsPage() {
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
@@ -23,12 +80,19 @@ export default function AdminPlanningsPage() {
   const [campus, setCampus] = useState<string>('ALL');
   const [editing, setEditing] = useState<ScheduleSlot | null>(null);
   const [creating, setCreating] = useState(false);
-  const [resolved, setResolved] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<string | null>(null);
 
+  async function reload() {
+    const [nextSlots, nextConflicts] = await Promise.all([
+      fetchAdminSchedule(),
+      fetchConflicts(),
+    ]);
+    setSlots(nextSlots);
+    setConflicts(nextConflicts);
+  }
+
   useEffect(() => {
-    fetchAdminSchedule().then(setSlots);
-    fetchConflicts().then(setConflicts);
+    reload();
   }, []);
 
   const campuses = useMemo(() => {
@@ -42,47 +106,39 @@ export default function AdminPlanningsPage() {
     [slots, campus],
   );
 
-  function assignRoom(conflictId: string, roomName: string) {
-    setResolved((prev) => new Set(prev).add(conflictId));
-    setConfirm(`Salle ${roomName} attribuee. Conflit resolu.`);
-    setTimeout(() => setConfirm(null), 3000);
-  }
+  async function handleSaveSlot(draft: SlotDraft, slotId?: string) {
+    const start = isoToScheduleFields(draft.startsAt);
+    const end = isoToScheduleFields(draft.endsAt);
 
-  function handleSaveSlot(draft: SlotDraft, slotId?: string) {
-    setSlots((prev) => {
-      if (slotId) {
-        return prev.map((s) =>
-          s.id === slotId
-            ? {
-                ...s,
-                courseName: draft.courseName,
-                instructorName: draft.instructorName,
-                roomName: draft.roomName,
-                roomId: draft.roomName.toLowerCase().replace(/\s+/g, '-'),
-                campus: draft.campus,
-                startsAt: draft.startsAt,
-                endsAt: draft.endsAt,
-              }
-            : s,
-        );
-      }
-      const newSlot: ScheduleSlot = {
-        id: `local-${Date.now()}`,
-        courseId: 'local',
-        courseName: draft.courseName,
-        instructorName: draft.instructorName,
-        roomId: draft.roomName.toLowerCase().replace(/\s+/g, '-'),
-        roomName: draft.roomName,
-        campus: draft.campus,
-        startsAt: draft.startsAt,
-        endsAt: draft.endsAt,
-      };
-      return [...prev, newSlot];
-    });
-    setConfirm(slotId ? 'Creneau mis a jour.' : 'Nouveau creneau cree.');
+    const ok = slotId
+      ? await updateSchedule(slotId, {
+          courseId: draft.courseId,
+          instructorId: draft.instructorId,
+          roomId: draft.roomId,
+          dayOfWeek: start.dayOfWeek,
+          startTime: start.time,
+          endTime: end.time,
+        })
+      : await createSchedule({
+          courseId: draft.courseId,
+          instructorId: draft.instructorId,
+          roomId: draft.roomId,
+          dayOfWeek: start.dayOfWeek,
+          startTime: start.time,
+          endTime: end.time,
+        });
+
+    if (!ok) {
+      setConfirm('Erreur lors de l\'enregistrement du créneau.');
+      setTimeout(() => setConfirm(null), 3000);
+      return;
+    }
+
+    setConfirm(slotId ? 'Créneau mis à jour.' : 'Nouveau créneau créé.');
     setTimeout(() => setConfirm(null), 3000);
     setEditing(null);
     setCreating(false);
+    await reload();
   }
 
   return (
@@ -115,81 +171,9 @@ export default function AdminPlanningsPage() {
         </p>
       )}
 
-      <section className="mb-6">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">
-          Conflits detectes
-        </h3>
-        {conflicts.length === 0 ? (
-          <p className="text-sm text-gray-600">Aucun conflit detecte.</p>
-        ) : (
-          <div className="space-y-3">
-            {conflicts.map((c) => {
-              const isResolved = resolved.has(c.id);
-              return (
-                <article
-                  key={c.id}
-                  className={`rounded-lg border p-4 ${
-                    isResolved
-                      ? 'border-emerald-200 bg-emerald-50'
-                      : c.severity === 'CRITICAL'
-                        ? 'border-red-200 bg-red-50'
-                        : 'border-amber-200 bg-amber-50'
-                  }`}
-                >
-                  <header className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold">
-                        {isResolved ? 'Conflit resolu' : c.reason}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        Severite : {c.severity}
-                      </div>
-                    </div>
-                    {isResolved && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] uppercase tracking-wide text-emerald-800">
-                        Resolu
-                      </span>
-                    )}
-                  </header>
-                  {!isResolved && (
-                    <>
-                      <ul className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
-                        {c.slots.map((s) => (
-                          <li
-                            key={s.id}
-                            className="rounded border bg-white px-2 py-1"
-                          >
-                            {s.courseName} · {formatDate(s.startsAt)}{' '}
-                            {formatTime(s.startsAt)} — Salle {s.roomName} ·{' '}
-                            {s.campus}
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="mt-3">
-                        <div className="text-xs font-medium text-gray-700">
-                          Suggestions de salles :
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {c.suggestedRooms.map((r) => (
-                            <button
-                              key={r.roomId}
-                              onClick={() => assignRoom(c.id, r.roomName)}
-                              aria-label={`Attribuer la salle ${r.roomName}`}
-                              className="rounded-md border border-gray-500 bg-white px-2 py-1.5 text-xs font-medium hover:border-amber-700 hover:bg-brand-50"
-                            >
-                              {r.roomName} · cap. {r.capacity}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      {conflicts.length > 0 && (
+        <ConflictsBanner conflicts={conflicts} />
+      )}
 
       <section className="mb-4">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">
@@ -269,47 +253,53 @@ function SlotDialog({
   onSave: (draft: SlotDraft) => void;
   onClose: () => void;
 }) {
+  const [courses, setCourses] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [instructors, setInstructors] = useState<{ id: string; name: string }[]>([]);
+  const [rooms, setRooms] = useState<{ id: string; name: string; campus: string }[]>([]);
   const [draft, setDraft] = useState<SlotDraft>({
-    courseName: slot?.courseName ?? '',
-    instructorName: slot?.instructorName ?? '',
-    roomName: slot?.roomName ?? '',
-    campus: slot?.campus ?? 'Paris',
+    courseId: slot?.courseId ?? '',
+    instructorId: slot?.instructorId ?? '',
+    roomId: slot?.roomId ?? '',
     startsAt: slot?.startsAt.slice(0, 16) ?? '',
     endsAt: slot?.endsAt.slice(0, 16) ?? '',
   });
+
+  useEffect(() => {
+    fetchCourses().then(setCourses);
+    fetchInstructors().then(setInstructors);
+    fetchRooms().then((r) =>
+      setRooms(r.map((room) => ({ id: room.id, name: room.name, campus: room.campus }))),
+    );
+  }, []);
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
         <h3 className="mb-3 text-base font-semibold">
-          {slot ? 'Editer le creneau' : 'Nouveau creneau'}
+          {slot ? 'Éditer le créneau' : 'Nouveau créneau'}
         </h3>
         <div className="grid gap-3">
-          <Input
+          <SelectField
             label="Cours"
-            value={draft.courseName}
-            onChange={(v) => setDraft({ ...draft, courseName: v })}
+            value={draft.courseId}
+            onChange={(v) => setDraft({ ...draft, courseId: v })}
+            options={courses.map((c) => ({ value: c.id, label: `${c.code} — ${c.name}` }))}
           />
-          <Input
+          <SelectField
             label="Enseignant"
-            value={draft.instructorName}
-            onChange={(v) => setDraft({ ...draft, instructorName: v })}
+            value={draft.instructorId}
+            onChange={(v) => setDraft({ ...draft, instructorId: v })}
+            options={instructors.map((i) => ({ value: i.id, label: i.name }))}
+          />
+          <SelectField
+            label="Salle"
+            value={draft.roomId}
+            onChange={(v) => setDraft({ ...draft, roomId: v })}
+            options={rooms.map((r) => ({ value: r.id, label: `${r.name} (${r.campus})` }))}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Salle"
-              value={draft.roomName}
-              onChange={(v) => setDraft({ ...draft, roomName: v })}
-            />
-            <Input
-              label="Campus"
-              value={draft.campus}
-              onChange={(v) => setDraft({ ...draft, campus: v })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Debut"
+              label="Début"
               type="datetime-local"
               value={draft.startsAt}
               onChange={(v) => setDraft({ ...draft, startsAt: v })}
@@ -330,6 +320,38 @@ function SlotDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-600">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full min-h-11 rounded-md border border-gray-500 bg-white px-3 py-2 text-sm focus:border-amber-700"
+      >
+        <option value="">— Sélectionner —</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
