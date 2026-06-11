@@ -157,14 +157,23 @@ async function genererNotes() {
             if (r < profile.tauxAbandon) {
               status     = 'abandonne';
               finalGrade = undefined;
-              attendance = noteFloat([5, Math.max(15, profile.assiduite[0] - 20)]);
+              // S'assure que le min de l'assiduité est inférieur à la limite haute calculée
+              const maxAttendance = Math.max(15, profile.assiduite[0] - 20);
+              const minAttendance = Math.min(5, maxAttendance - 1); 
+              attendance = noteFloat([minAttendance, maxAttendance]);
+              
             } else if (r < profile.tauxAbandon + profile.tauxEchec) {
               status     = 'echec';
-              finalGrade = noteFloat([Math.max(0, profile.notes[0] - 3), 9.5]);
+              // S'assure que la note min d'échec ne dépasse jamais le max (9.5)
+              const minEchec = Math.min(8.5, Math.max(0, profile.notes[0] - 3));
+              finalGrade = noteFloat([minEchec, 9.5]);
               attendance = noteFloat([profile.assiduite[0], profile.assiduite[1]]);
             } else {
               status     = 'valide';
-              finalGrade = noteFloat([Math.max(10, profile.notes[0]), profile.notes[1]]);
+              // S'assure que la note max est toujours supérieure ou égale à la note min forcée (10)
+              const minValide = Math.max(10, profile.notes[0]);
+              const maxValide = Math.max(minValide + 0.5, profile.notes[1]);
+              finalGrade = noteFloat([minValide, maxValide]);
               attendance = noteFloat(profile.assiduite);
             }
           }
