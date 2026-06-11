@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,53 +17,47 @@ import { CreateInstructorDto } from './dto/create-instructor.dto';
 import { UpdateInstructorDto } from './dto/update-instructor.dto';
 import { InstructorsService } from './instructors.service';
 
-/**
- * Controller Enseignants — endpoints REST pour la gestion du corps professoral.
- *
- * Routes préfixées par /api/instructors (voir main.ts).
- * Exposé publiquement via le gateway : GET http://localhost:3001/api/instructors
- */
+@ApiTags('Enseignants')
+@ApiBearerAuth('JWT')
 @Controller('instructors')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class InstructorsController {
   constructor(private instructorsService: InstructorsService) {}
 
-  /**
-   * GET /api/instructors
-   * Liste tous les enseignants. Filtre optionnel : ?campus_id=xxx
-   */
   @Get()
   @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
+  @ApiOperation({ summary: 'Lister les enseignants', description: 'Filtre optionnel par campus.' })
+  @ApiQuery({ name: 'campus_id', required: false, description: 'ID du campus', example: 'CAMP001' })
+  @ApiResponse({ status: 200, description: 'Liste des enseignants.' })
   findAll(@Query('campus_id') campusId?: string) {
     return this.instructorsService.findAll(campusId);
   }
 
-  /**
-   * GET /api/instructors/:id
-   * Détail d'un enseignant avec campus, cours assignés et créneaux EDT.
-   */
   @Get(':id')
   @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
+  @ApiOperation({ summary: 'Détail d\'un enseignant', description: 'Inclut le campus, les cours assignés et les créneaux EDT.' })
+  @ApiParam({ name: 'id', description: "ID de l'enseignant", example: 'INST001' })
+  @ApiResponse({ status: 200, description: "Détail de l'enseignant." })
+  @ApiResponse({ status: 404, description: 'Enseignant introuvable.' })
   findOne(@Param('id') id: string) {
     return this.instructorsService.findOne(id);
   }
 
-  /**
-   * POST /api/instructors
-   * Crée un enseignant rattaché à un campus. Réservé à l'administration et la direction.
-   */
   @Post()
   @Roles(Role.ADMIN, Role.DIRECTION)
+  @ApiOperation({ summary: 'Créer un enseignant' })
+  @ApiResponse({ status: 201, description: 'Enseignant créé.' })
+  @ApiResponse({ status: 400, description: 'Données invalides.' })
   create(@Body() dto: CreateInstructorDto) {
     return this.instructorsService.create(dto);
   }
 
-  /**
-   * PUT /api/instructors/:id
-   * Met à jour un enseignant existant.
-   */
   @Put(':id')
   @Roles(Role.ADMIN, Role.DIRECTION)
+  @ApiOperation({ summary: 'Mettre à jour un enseignant' })
+  @ApiParam({ name: 'id', description: "ID de l'enseignant", example: 'INST001' })
+  @ApiResponse({ status: 200, description: 'Enseignant mis à jour.' })
+  @ApiResponse({ status: 404, description: 'Enseignant introuvable.' })
   update(@Param('id') id: string, @Body() dto: UpdateInstructorDto) {
     return this.instructorsService.update(id, dto);
   }
