@@ -63,8 +63,31 @@ async function verifyToken(token: string): Promise<JwtPayload | null> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Pages publiques → laisser passer sans vérification
+  // DEV UNIQUEMENT : permet de prévisualiser les portails sans backend ni login.
+  // Ne s'active jamais en production (garde-fou sur NODE_ENV) et reste inactif
+  // tant que DEV_AUTH_BYPASS n'est pas mis à "1" dans .env.local.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.DEV_AUTH_BYPASS === '1'
+  ) {
+    return NextResponse.next();
+  }
+
+  // Pages publiques → laisser passer sans vérification.
+  // Exception : un utilisateur déjà connecté qui arrive sur / ou /login est
+  // renvoyé vers son portail (sinon il reverrait l'écran de connexion).
   if (isPublicPath(pathname)) {
+    if (pathname === '/' || pathname === '/login') {
+      const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+      if (token) {
+        const user = await verifyToken(token);
+        if (user) {
+          return NextResponse.redirect(
+            new URL(ROLE_HOME_PATH[user.role], request.url),
+          );
+        }
+      }
+    }
     return NextResponse.next();
   }
 
@@ -90,13 +113,6 @@ export async function middleware(request: NextRequest) {
   // Bon token mais mauvais portail (ex: étudiant qui tente /admin)
   if (!canAccessRoute(user.role, pathname)) {
     return NextResponse.redirect(new URL('/unauthorized', request.url));
-  }
-
-  // Déjà connecté qui retourne sur /login → rediriger vers son portail
-  if (pathname === '/login') {
-    return NextResponse.redirect(
-      new URL(ROLE_HOME_PATH[user.role], request.url),
-    );
   }
 
   return NextResponse.next();
