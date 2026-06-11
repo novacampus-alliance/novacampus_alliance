@@ -76,7 +76,9 @@ L'application suit une architecture **SOA (Service-Oriented Architecture)** orga
 
 ### Service IA
 - **Framework** : Python + FastAPI + LangChain
-- **Usage** : Service isolé dédié aux fonctionnalités d'intelligence artificielle
+- **Agent M7** : résolution des conflits EDT (salles + double réservation enseignant)
+- **Doc** : [docs/m7-agent-conflits-edt.md](docs/m7-agent-conflits-edt.md)
+- **Tests** : collection Postman `postman/m7-agent-conflits-edt.postman_collection.json`
 
 ### Persistance
 - **Relationnel** : PostgreSQL + Prisma ORM
@@ -115,6 +117,28 @@ Le projet s'appuie sur une base de données réelle fournie par l'entreprise (`N
 ## Workflow
 1. **Analyse des besoins** — Compréhension approfondie du contexte et des besoins métier
 2. **Conception de l'architecture** — Définition de l'architecture SOA et des interactions entre services
-3. **Développement itératif** — Mise en place des services métiers, intégration de l'agent IA, développement des portails IHM
+3. **Développement itératif** — Mise en place des services métiers, intégration de l'agent IA conflits EDT (M7), développement des portails IHM
 4. **Tests & validation** — Tests unitaires, d'intégration et de performance
 5. **Documentation** — Rédaction de la documentation technique et des diagrammes d'architecture
+
+---
+
+## Agent IA — Conflits EDT (M7)
+
+L'agent IA aide l'administration à **proposer des solutions** aux conflits d'emploi du temps détectés par `academic-service` :
+
+| Type | Détection | Suggestion typique |
+|------|-----------|-------------------|
+| `room` | Même salle, même créneau | `change_room` vers une salle libre |
+| `instructor` | Même enseignant, même créneau | `change_instructor` ou `reschedule` |
+
+**Démarrage rapide (Docker) :**
+
+```bash
+docker compose up -d
+cd services/academic-service && npm run prisma:seed:m7-conflict
+```
+
+Puis `POST /api/v1/conflicts/suggest/auto` avec `{ "campus_id": "..." }` (JWT admin).
+
+Voir [docs/m7-agent-conflits-edt.md](docs/m7-agent-conflits-edt.md) et [docs/issue-17-conflicts.md](docs/issue-17-conflicts.md) pour la détection côté academic-service.

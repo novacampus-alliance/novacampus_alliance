@@ -1,0 +1,230 @@
+{
+  "info": {
+    "name": "Novacampus — M7 Agent IA Conflits EDT",
+    "description": "Test agent IA conflits EDT (salle + enseignant).\n\nAvant l'orchestration, exécuter une fois :\n  cd services/academic-service\n  npm run prisma:seed:m7-conflict\n\nModes :\n- MVP manuel : POST /suggest (type room | instructor)\n- Orchestration : POST /suggest/auto | /suggest/batch\n\nDétection conflits : voir issue-17-conflicts.postman_collection.json\n\nbase_url Docker : http://localhost",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost" },
+    { "key": "token", "value": "" },
+    { "key": "campus_id", "value": "" },
+    { "key": "schedule_a_id", "value": "" },
+    { "key": "schedule_b_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 — Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('token', pm.response.json().access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@novacampus.fr\",\n  \"password\": \"Novacampus2026!\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — IA Status",
+      "item": [
+        {
+          "name": "GET — LLM status",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/conflicts/llm/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — MVP manuel",
+      "item": [
+        {
+          "name": "POST — Suggest (payload manuel)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conflict\": {\n    \"schedule_a\": {\n      \"schedule_id\": \"sched-a-demo\",\n      \"course_name\": \"Algorithmique\",\n      \"room_id\": \"room-a\",\n      \"room_name\": \"Salle A\",\n      \"day_of_week\": 2,\n      \"start_time\": \"14:00\",\n      \"end_time\": \"16:00\"\n    },\n    \"schedule_b\": {\n      \"schedule_id\": \"sched-b-demo\",\n      \"course_name\": \"Bases de données\",\n      \"room_id\": \"room-a\",\n      \"room_name\": \"Salle A\",\n      \"day_of_week\": 2,\n      \"start_time\": \"14:00\",\n      \"end_time\": \"16:00\"\n    },\n    \"reason\": \"Conflit salle Salle A — jour 2\"\n  },\n  \"available_rooms\": [\n    {\n      \"room_id\": \"room-b\",\n      \"room_name\": \"Salle B\",\n      \"capacity\": 40\n    }\n  ]\n}"
+            },
+            "url": "{{base_url}}/api/v1/conflicts/suggest"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — Orchestration",
+      "item": [
+        {
+          "name": "GET — Campus",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const list = pm.response.json();",
+                  "pm.test('Campus listé', () => pm.expect(pm.response.code).to.equal(200));",
+                  "if (pm.response.code === 200 && list.length) {",
+                  "  pm.collectionVariables.set('campus_id', list[0].campus_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{base_url}}/api/campus"
+          }
+        },
+        {
+          "name": "GET — Conflits (vérif seed M7)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const conflicts = pm.response.json();",
+                  "pm.test('Conflits listés', () => pm.expect(pm.response.code).to.equal(200));",
+                  "pm.test('Seed M7 requis — npm run prisma:seed:m7-conflict', () => {",
+                  "  pm.expect(conflicts.length, 'Aucun conflit — lancez le seed M7').to.be.above(0);",
+                  "});",
+                  "if (conflicts.length) {",
+                  "  const c = conflicts[0];",
+                  "  pm.collectionVariables.set('schedule_a_id', c.schedule_a.schedule_id);",
+                  "  pm.collectionVariables.set('schedule_b_id', c.schedule_b.schedule_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/schedules/conflicts?campus_id={{campus_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "schedules", "conflicts"],
+              "query": [{ "key": "campus_id", "value": "{{campus_id}}" }]
+            }
+          }
+        },
+        {
+          "name": "POST — Suggest auto (campus_id seul)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Suggestion orchestrée', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Suggestions présentes', () => pm.expect(body.suggestions.length).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/conflicts/suggest/auto"
+          }
+        },
+        {
+          "name": "POST — Suggest auto (avec IDs)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Suggestion orchestrée avec IDs', () => pm.expect(pm.response.code).to.equal(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\",\n  \"schedule_a_id\": \"{{schedule_a_id}}\",\n  \"schedule_b_id\": \"{{schedule_b_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/conflicts/suggest/auto"
+          }
+        },
+        {
+          "name": "POST — Suggest batch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Batch OK', () => pm.expect(pm.response.code).to.equal(200));",
+                  "pm.test('Conflits traités', () => pm.expect(pm.response.json().total_conflicts).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campus_id\": \"{{campus_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/conflicts/suggest/batch"
+          }
+        }
+      ]
+    }
+  ]
+}

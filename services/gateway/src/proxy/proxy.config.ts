@@ -84,7 +84,7 @@ export const SERVICE_ROUTES: ServiceRoute[] = [
     path: '/api/v1',
     envKey: 'AI_SERVICE_URL',
     defaultUrl: 'http://localhost:8000',
-    label: 'Svc IA — relance financière',
+    label: 'Svc IA — résolution conflits EDT',
   },
 ];
 
