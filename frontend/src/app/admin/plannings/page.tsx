@@ -32,6 +32,48 @@ function isoToScheduleFields(iso: string): { dayOfWeek: number; time: string } {
   return { dayOfWeek, time };
 }
 
+function ConflictsBanner({ conflicts }: { conflicts: ScheduleConflict[] }) {
+  const byCampus = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of conflicts) {
+      const name = c.slots[0]?.campus || 'Campus inconnu';
+      map.set(name, (map.get(name) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [conflicts]);
+
+  return (
+    <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-red-800">
+          ⚠ {conflicts.length} conflit{conflicts.length > 1 ? 's' : ''} détecté{conflicts.length > 1 ? 's' : ''} sur {byCampus.length} campus
+        </span>
+        <Link
+          href="/admin/conflits"
+          className="shrink-0 text-xs font-semibold text-red-700 underline underline-offset-2 hover:text-red-900"
+        >
+          Résoudre avec l&apos;agent M7 →
+        </Link>
+      </div>
+      <ul className="flex flex-wrap gap-2">
+        {byCampus.map(([name, count]) => (
+          <li key={name}>
+            <Link
+              href={`/admin/conflits?campus=${encodeURIComponent(name)}`}
+              className="flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-2.5 py-1 text-xs text-red-700 hover:bg-red-100 transition-colors"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              <span className="font-medium">{count} conflit{count > 1 ? 's' : ''}</span>
+              <span className="text-red-500">·</span>
+              <span>{name}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function AdminPlanningsPage() {
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [conflicts, setConflicts] = useState<ScheduleConflict[]>([]);
@@ -130,17 +172,7 @@ export default function AdminPlanningsPage() {
       )}
 
       {conflicts.length > 0 && (
-        <Link
-          href="/admin/conflits"
-          className="mb-6 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 hover:bg-red-100 transition-colors"
-        >
-          <span className="text-sm font-medium text-red-800">
-            ⚠ {conflicts.length} conflit{conflicts.length > 1 ? 's' : ''} détecté{conflicts.length > 1 ? 's' : ''} — résoudre avec l&apos;agent M7
-          </span>
-          <span className="text-xs font-semibold text-red-700 underline underline-offset-2">
-            Voir les conflits →
-          </span>
-        </Link>
+        <ConflictsBanner conflicts={conflicts} />
       )}
 
       <section className="mb-4">

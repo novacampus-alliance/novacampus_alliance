@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
 import { Card, StatusPill } from '@/components/ui';
@@ -180,8 +181,12 @@ function AiPanel({
 }
 
 export default function AdminConflictsPage() {
+  const searchParams = useSearchParams();
   const [conflicts, setConflicts] = useState<ScheduleConflict[]>([]);
   const [loading, setLoading] = useState(true);
+  const [campusFilter, setCampusFilter] = useState<string>(
+    searchParams.get('campus') ?? 'ALL',
+  );
 
   const [aiResults, setAiResults] = useState<
     Map<string, AiConflictSuggestion | null>
@@ -265,7 +270,30 @@ export default function AdminConflictsPage() {
     }));
   }
 
-  const open = conflicts.filter((c) => !resolved.has(c.id));
+  const campusList = useMemo(() => {
+    const names = new Set<string>();
+    for (const c of conflicts) {
+      const name = c.slots[0]?.campus;
+      if (name) names.add(name);
+    }
+    return Array.from(names).sort();
+  }, [conflicts]);
+
+  const byCampus = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of conflicts) {
+      if (resolved.has(c.id)) continue;
+      const name = c.slots[0]?.campus || 'Campus inconnu';
+      map.set(name, (map.get(name) ?? 0) + 1);
+    }
+    return map;
+  }, [conflicts, resolved]);
+
+  const open = conflicts.filter(
+    (c) =>
+      !resolved.has(c.id) &&
+      (campusFilter === 'ALL' || c.slots[0]?.campus === campusFilter),
+  );
 
   return (
     <AppShell title="Conflits EDT" subtitle="Détection & résolution par l'agent M7">
@@ -282,11 +310,51 @@ export default function AdminConflictsPage() {
         </div>
       )}
 
+      {/* Répartition par campus */}
+      {!loading && campusList.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => setCampusFilter('ALL')}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              campusFilter === 'ALL'
+                ? 'border-amber-400 bg-amber-100 text-amber-900'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Tous les campus
+            <span className="ml-1.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
+              {[...byCampus.values()].reduce((a, b) => a + b, 0)}
+            </span>
+          </button>
+          {campusList.map((name) => {
+            const count = byCampus.get(name) ?? 0;
+            return (
+              <button
+                key={name}
+                onClick={() => setCampusFilter(name)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  campusFilter === name
+                    ? 'border-red-400 bg-red-100 text-red-900'
+                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {name}
+                {count > 0 && (
+                  <span className="ml-1.5 rounded-full bg-red-200 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <p className="flex-1 text-sm text-gray-600">
           {loading
             ? 'Chargement des conflits…'
-            : `${open.length} conflit(s) ouvert(s). L'agent M7 analyse automatiquement chaque conflit et propose les meilleures résolutions.`}
+            : `${open.length} conflit${open.length > 1 ? 's' : ''} ouvert${open.length > 1 ? 's' : ''}${campusFilter !== 'ALL' ? ` sur ${campusFilter}` : ''}. L'agent M7 analyse automatiquement et propose les meilleures résolutions.`}
         </p>
         <button
           onClick={() => loadConflicts().then(analyzeAll)}
