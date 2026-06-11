@@ -66,11 +66,9 @@ type ScheduleConflictRow = Prisma.ScheduleGetPayload<{
   };
 }>;
 
-const beforeSnapshotInclude = {
-  room:       { select: { room_name: true } },
-  instructor: { select: { first_name: true, last_name: true, email: true } },
-  course:     { select: { course_name: true } },
-} satisfies Prisma.ScheduleInclude;
+type ScheduleWithRelations = Prisma.ScheduleGetPayload<{
+  include: typeof scheduleDetailInclude;
+}>;
 
 type ScheduleBefore = Prisma.ScheduleGetPayload<{
   include: typeof beforeSnapshotInclude;
