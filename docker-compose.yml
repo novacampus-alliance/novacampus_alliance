@@ -218,7 +218,8 @@ services:
       - novacampus_network
 
   # ─────────────────────────────────────────
-  # Nginx — reverse proxy (point d'entrée HTTP)
+  # Nginx — reverse proxy (point d'entrée HTTP/HTTPS)
+  # Certificats Let's Encrypt gérés par certbot sur le host (voir README)
   # ─────────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
@@ -226,8 +227,10 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - frontend
       - gateway
