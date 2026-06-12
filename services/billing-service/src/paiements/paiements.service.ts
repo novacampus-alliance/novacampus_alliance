@@ -153,7 +153,8 @@ export class PaiementsService {
     const now = new Date();
     const enAttente = await this.paiementModel.find({ statut: { $in: [StatutPaiement.EN_ATTENTE, StatutPaiement.PARTIEL] }, dateEcheance: { $lt: now } });
     for (const p of enAttente) {
-      if (p.statut !== StatutPaiement.EN_RETARD) p.statut = StatutPaiement.EN_RETARD;
+      const nouvelRetard = p.statut !== StatutPaiement.EN_RETARD;
+      if (nouvelRetard) p.statut = StatutPaiement.EN_RETARD;
       const derniere = p.relances?.at(-1);
       if (!derniere || !this.memeJour(derniere.date, now)) {
         let envoyee = false;
@@ -161,6 +162,9 @@ export class PaiementsService {
         p.relances.push({ date: now, type: 'notification', message: `Relance automatique — solde : ${p.soldeRestant} EUR`, envoyee } as any);
       }
       await p.save();
+      if (nouvelRetard) {
+        this.notifierPassageEnRetard(p.studentId.toString(), p.soldeRestant, p.dateEcheance, p.numeroFacture).catch(() => {});
+      }
     }
     const avecEcheancier = await this.paiementModel.find({ estEcheancier: true, statut: { $nin: [StatutPaiement.PAYE, StatutPaiement.ANNULE] } });
     for (const p of avecEcheancier) {
@@ -183,6 +187,26 @@ export class PaiementsService {
   private async genererNumeroFacture(): Promise<string> {
     const count = await this.paiementModel.countDocuments();
     return `FAC-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+  }
+
+  private async notifierPassageEnRetard(
+    studentId: string,
+    soldeRestant: number,
+    dateEcheance: Date,
+    numeroFacture: string | undefined,
+  ) {
+    const notifUrl = process.env.NOTIFICATION_SERVICE_URL ?? 'http://notification-service:3003';
+    const ref = numeroFacture ? ` (${numeroFacture})` : '';
+    const message = `Votre paiement${ref} de ${soldeRestant} EUR est en retard depuis le ${dateEcheance.toLocaleDateString('fr-FR')}. Veuillez régulariser votre situation.`;
+    try {
+      await fetch(`${notifUrl}/notifications/internal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, type: 'PAYMENT_OVERDUE', message }),
+      });
+    } catch (err) {
+      this.logger.error(`Echec notification retard pour ${studentId} : ${err.message}`);
+    }
   }
 
   private memeJour(d1: Date, d2: Date) {

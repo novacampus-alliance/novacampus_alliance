@@ -10,7 +10,7 @@ Architecture orientée services : chaque service métier est **déployable indé
 | academic-service | 3002 | Auth JWT, campus, cours (interne) |
 | billing-service | 3003 | Paiements, factures (interne) |
 | notification-service | 3004 | Alertes, notifications (interne) |
-| ai-service | 8000 | Agent IA relance financière |
+| ai-service | 8000 | Agent IA résolution conflits EDT (M7) |
 
 Le **frontend** et les clients externes appellent uniquement le **gateway** (`NEXT_PUBLIC_API_URL=http://localhost:3001`).
 
@@ -50,3 +50,14 @@ npm run prisma:seed
 ```
 
 Comptes créés : `admin@novacampus.fr`, `etudiant@novacampus.fr`, etc. — mot de passe `Novacampus2026!`
+
+## Agent IA — conflits EDT (M7)
+
+```bash
+# Données de test conflit salle + enseignant
+cd services/academic-service
+npm run prisma:seed:m7-conflict
+```
+
+Documentation : [docs/m7-agent-conflits-edt.md](../docs/m7-agent-conflits-edt.md)  
+Collection Postman : `postman/m7-agent-conflits-edt.postman_collection.json`

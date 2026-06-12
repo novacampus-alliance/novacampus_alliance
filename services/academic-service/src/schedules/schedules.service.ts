@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -9,6 +10,13 @@ import { parseTimeToDate, timesOverlap } from '../common/utils/time.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
+
+export type ConflictType = 'room' | 'instructor';
+
+const DAYS: Record<number, string> = {
+  1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi',
+  5: 'Vendredi', 6: 'Samedi', 7: 'Dimanche',
+};
 
 const scheduleDetailInclude = {
   course: {
@@ -42,12 +50,34 @@ const scheduleDetailInclude = {
   },
 } satisfies Prisma.ScheduleInclude;
 
+const beforeSnapshotInclude = {
+  room:       { select: { room_name: true } },
+  instructor: { select: { first_name: true, last_name: true, email: true } },
+  course:     { select: { course_name: true } },
+} satisfies Prisma.ScheduleInclude;
+
+type ScheduleConflictRow = Prisma.ScheduleGetPayload<{
+  include: {
+    room: { select: { room_id: true; room_name: true; campus_id: true } };
+    course: { select: { course_id: true; course_name: true } };
+    instructor: {
+      select: { instructor_id: true; first_name: true; last_name: true };
+    };
+  };
+}>;
+
 type ScheduleWithRelations = Prisma.ScheduleGetPayload<{
   include: typeof scheduleDetailInclude;
 }>;
 
+type ScheduleBefore = Prisma.ScheduleGetPayload<{
+  include: typeof beforeSnapshotInclude;
+}>;
+
 @Injectable()
 export class SchedulesService {
+  private readonly logger = new Logger(SchedulesService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async findAll(
@@ -59,15 +89,10 @@ export class SchedulesService {
       where: {
         ...(instructorId ? { instructor_id: instructorId } : {}),
         ...(academicYear ? { academic_year: academicYear } : {}),
-        ...(campusId
-          ? { room: { campus_id: campusId } }
-          : {}),
+        ...(campusId ? { room: { campus_id: campusId } } : {}),
       },
       include: scheduleDetailInclude,
-      orderBy: [
-        { day_of_week: 'asc' },
-        { start_time: 'asc' },
-      ],
+      orderBy: [{ day_of_week: 'asc' }, { start_time: 'asc' }],
     });
     return schedules;
   }
@@ -86,24 +111,32 @@ export class SchedulesService {
     });
 
     const conflicts: Array<{
-      schedule_a: (typeof schedules)[number];
-      schedule_b: (typeof schedules)[number];
+      schedule_a: ScheduleConflictRow;
+      schedule_b: ScheduleConflictRow;
       reason: string;
+      type: ConflictType;
     }> = [];
+    const seen = new Set<string>();
 
     for (let i = 0; i < schedules.length; i++) {
       for (let j = i + 1; j < schedules.length; j++) {
         const a = schedules[i];
         const b = schedules[j];
-        if (
-          a.room_id === b.room_id &&
-          a.day_of_week === b.day_of_week &&
-          timesOverlap(a.start_time, a.end_time, b.start_time, b.end_time)
-        ) {
-          conflicts.push({
-            schedule_a: a,
-            schedule_b: b,
+        if (a.day_of_week !== b.day_of_week) continue;
+        if (!timesOverlap(a.start_time, a.end_time, b.start_time, b.end_time)) {
+          continue;
+        }
+
+        if (a.room_id === b.room_id) {
+          this.pushConflict(conflicts, seen, a, b, 'room', {
             reason: `Conflit salle ${a.room.room_name} — jour ${a.day_of_week}`,
+          });
+        }
+
+        if (a.instructor_id === b.instructor_id) {
+          const name = `${a.instructor.first_name} ${a.instructor.last_name}`.trim();
+          this.pushConflict(conflicts, seen, a, b, 'instructor', {
+            reason: `Conflit enseignant ${name} — jour ${a.day_of_week}`,
           });
         }
       }
@@ -141,6 +174,12 @@ export class SchedulesService {
       startTime,
       endTime,
     );
+    await this.assertNoInstructorConflict(
+      dto.instructor_id,
+      dto.day_of_week,
+      startTime,
+      endTime,
+    );
 
     const schedule = await this.prisma.schedule.create({
       data: {
@@ -162,6 +201,7 @@ export class SchedulesService {
   async update(id: string, dto: UpdateScheduleDto) {
     const existing = await this.prisma.schedule.findUnique({
       where: { schedule_id: id },
+      include: beforeSnapshotInclude,
     });
     if (!existing) {
       throw new NotFoundException(`Planning introuvable : ${id}`);
@@ -172,6 +212,7 @@ export class SchedulesService {
     if (dto.room_id) await this.ensureRoomExists(dto.room_id);
 
     const roomId = dto.room_id ?? existing.room_id;
+    const instructorId = dto.instructor_id ?? existing.instructor_id;
     const dayOfWeek = dto.day_of_week ?? existing.day_of_week;
     const startTime = dto.start_time
       ? parseTimeToDate(dto.start_time)
@@ -187,6 +228,13 @@ export class SchedulesService {
     }
 
     await this.assertNoRoomConflict(roomId, dayOfWeek, startTime, endTime, id);
+    await this.assertNoInstructorConflict(
+      instructorId,
+      dayOfWeek,
+      startTime,
+      endTime,
+      id,
+    );
 
     const data: Prisma.ScheduleUpdateInput = {};
     if (dto.course_id !== undefined)
@@ -207,7 +255,100 @@ export class SchedulesService {
       data,
       include: scheduleDetailInclude,
     });
+
+    const roomChanged = dto.room_id !== undefined && dto.room_id !== existing.room_id;
+    const timeChanged =
+      (dto.day_of_week !== undefined && dto.day_of_week !== existing.day_of_week) ||
+      dto.start_time !== undefined ||
+      dto.end_time !== undefined;
+
+    if (roomChanged || timeChanged) {
+      this.sendScheduleChangeNotifications(existing, schedule).catch((err) =>
+        this.logger.error(`Notification planning echouee : ${err.message}`),
+      );
+    }
+
     return schedule;
+  }
+
+  // ── Notification inter-service ────────────────────────────────────────────────
+
+  private async sendScheduleChangeNotifications(
+    before: ScheduleBefore,
+    after: ScheduleWithRelations,
+  ) {
+    const fmt = (d: Date) =>
+      `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+
+    const beforeDesc = `${DAYS[before.day_of_week] ?? `Jour ${before.day_of_week}`} ${fmt(before.start_time)}–${fmt(before.end_time)} — salle ${before.room.room_name}`;
+    const afterDesc  = `${DAYS[after.day_of_week] ?? `Jour ${after.day_of_week}`} ${fmt(after.start_time)}–${fmt(after.end_time)} — salle ${after.room.room_name}`;
+
+    const message = `Votre cours "${before.course.course_name}" a été modifié.`;
+    const details = `Avant : ${beforeDesc}\nAprès : ${afterDesc}`;
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { course_id: before.course_id },
+      include: {
+        student: { include: { user: { select: { user_id: true } } } },
+      },
+    });
+
+    const userIds: string[] = enrollments
+      .map((e) => e.student?.user?.user_id)
+      .filter((uid): uid is string => !!uid);
+
+    if (before.instructor.email) {
+      const instrUser = await this.prisma.user.findFirst({
+        where: { email: before.instructor.email },
+        select: { user_id: true },
+      });
+      if (instrUser) userIds.push(instrUser.user_id);
+    }
+
+    const unique = [...new Set(userIds)];
+    const notifUrl =
+      process.env.NOTIFICATION_SERVICE_URL ?? 'http://notification-service:3003';
+
+    await Promise.allSettled(
+      unique.map((user_id) =>
+        fetch(`${notifUrl}/notifications/internal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id, type: 'SCHEDULE_CHANGE', message, details }),
+        }),
+      ),
+    );
+
+    this.logger.log(
+      `Notification changement planning envoyee a ${unique.length} utilisateur(s)`,
+    );
+  }
+
+  // ── Helpers privés ────────────────────────────────────────────────────────────
+
+  private pushConflict(
+    conflicts: Array<{
+      schedule_a: ScheduleConflictRow;
+      schedule_b: ScheduleConflictRow;
+      reason: string;
+      type: ConflictType;
+    }>,
+    seen: Set<string>,
+    a: ScheduleConflictRow,
+    b: ScheduleConflictRow,
+    type: ConflictType,
+    meta: { reason: string },
+  ) {
+    const ids = [a.schedule_id, b.schedule_id].sort();
+    const key = `${type}:${ids[0]}:${ids[1]}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    conflicts.push({
+      schedule_a: a,
+      schedule_b: b,
+      reason: meta.reason,
+      type,
+    });
   }
 
   private async assertNoRoomConflict(
@@ -234,6 +375,39 @@ export class SchedulesService {
         throw new ConflictException({
           message: `Conflit de salle : ${slot.room.room_name} deja reservee (${slot.course.course_name})`,
           conflicting_schedule_id: slot.schedule_id,
+          type: 'room',
+        });
+      }
+    }
+  }
+
+  private async assertNoInstructorConflict(
+    instructorId: string,
+    dayOfWeek: number,
+    startTime: Date,
+    endTime: Date,
+    excludeId?: string,
+  ) {
+    const existing = await this.prisma.schedule.findMany({
+      where: {
+        instructor_id: instructorId,
+        day_of_week: dayOfWeek,
+        ...(excludeId ? { schedule_id: { not: excludeId } } : {}),
+      },
+      include: {
+        instructor: { select: { first_name: true, last_name: true } },
+        course: { select: { course_name: true } },
+      },
+    });
+
+    for (const slot of existing) {
+      if (timesOverlap(startTime, endTime, slot.start_time, slot.end_time)) {
+        const name =
+          `${slot.instructor.first_name} ${slot.instructor.last_name}`.trim();
+        throw new ConflictException({
+          message: `Conflit enseignant : ${name} deja affecte (${slot.course.course_name})`,
+          conflicting_schedule_id: slot.schedule_id,
+          type: 'instructor',
         });
       }
     }

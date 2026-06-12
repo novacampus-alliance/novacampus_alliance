@@ -50,7 +50,7 @@ export class SchedulesController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.DIRECTION)
+  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateScheduleDto) {
     return this.schedulesService.update(id, dto);
   }

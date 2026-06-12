@@ -23,9 +23,8 @@ COPY --from=builder /app/billing-service/node_modules ./node_modules
 COPY --from=builder /app/billing-service/dist ./dist
 COPY --from=builder /app/prisma ../prisma/
 COPY services/billing-service/docker-entrypoint.sh ./docker-entrypoint.sh
-
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 EXPOSE 3003
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "./docker-entrypoint.sh"]

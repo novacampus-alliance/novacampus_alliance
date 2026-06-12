@@ -11,12 +11,14 @@
     "start:prod": "node dist/main.js",
     "prisma:generate": "prisma generate --schema=../../prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=../../prisma/schema.prisma",
-    "prisma:seed": "prisma db seed --schema=../../prisma/schema.prisma"
+    "prisma:seed": "prisma db seed --schema=../../prisma/schema.prisma",
+    "prisma:seed:m7-conflict": "ts-node --project scripts/tsconfig.json scripts/seed-m7-edt-conflict.ts"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "ts-node --transpile-only --compiler-options {\"module\":\"CommonJS\",\"esModuleInterop\":true} ../../prisma/seed/seed.ts"
   },
   "dependencies": {
+    "@faker-js/faker": "^8.4.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -27,7 +29,9 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "dotenv": "^17.4.2",
     "ioredis": "^5.11.1",
+    "mongoose": "^9.7.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "prisma": "^5.22.0",

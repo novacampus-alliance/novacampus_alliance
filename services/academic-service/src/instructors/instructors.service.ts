@@ -96,9 +96,12 @@ export class InstructorsService {
    * Liste les enseignants, avec filtre optionnel par campus.
    * @param campusId — si fourni, ne retourne que les enseignants de ce campus
    */
-  async findAll(campusId?: string) {
+  async findAll(campusId?: string, email?: string) {
     const instructors = await this.prisma.instructor.findMany({
-      where: campusId ? { campus_id: campusId } : undefined,
+      where: {
+        ...(campusId ? { campus_id: campusId } : {}),
+        ...(email ? { email: { equals: email, mode: 'insensitive' } } : {}),
+      },
       select: {
         ...instructorBaseSelect,
         campus: {

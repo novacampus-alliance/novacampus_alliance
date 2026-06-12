@@ -22,12 +22,13 @@ export class StudentsController {
   constructor(private studentsService: StudentsService) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR)
+  @Roles(Role.ADMIN, Role.DIRECTION, Role.INSTRUCTOR, Role.STUDENT)
   findAll(
     @Query('campus_id') campusId?: string,
     @Query('program_id') programId?: string,
+    @Query('email') email?: string,
   ) {
-    return this.studentsService.findAll(campusId, programId);
+    return this.studentsService.findAll(campusId, programId, email);
   }
 
   @Get(':id/dossier')
